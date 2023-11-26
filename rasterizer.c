@@ -195,7 +195,7 @@ static _REG void draw_horiz_mono(_A0(tri *t), _A1(struct bounds *p)) {
 	colour *pb = t->pbuf + x;
 	scalar iLen = 1.0f/(p->max.x - p->min.x);
 	scalar w, dw, f=x-p->min.x;
-	int i = 1+floor(p->max.x) - x;
+	int i = ceil(p->max.x) - x;
 
 	// reset min/max
 	p->max.x = -1;
@@ -233,7 +233,7 @@ static _REG void draw_horiz(_A0(tri *t), _A1(struct bounds *p)) {
 	colour *pb = t->pbuf + x;
 	scalar iLen = 1.0f/(p->max.x - p->min.x);
 	scalar r, g, b, w, dr, dg, db, dw, f=x-p->min.x;
-	int i = 1+floor(p->max.x) - x;
+	int i = ceil(p->max.x) - x;
 
     r  = p->min.c.x;  g  = p->min.c.y;  b  = p->min.c.z;  w  = p->min.w;
 	
