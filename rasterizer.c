@@ -16,8 +16,8 @@ typedef struct {
 	scalar *zbuf; // actually 1/z buf
 	colour *pbuf;
 	
-	scalar	x[3];	// screen pos: x
-	int		y[3];	//             y
+	int     x[3];	// screen pos: x
+	int     y[3];	//             y
 	scalar	w[3];	// inverse dist to screen	
 	scalar  r[3];	// color: red
 	scalar  g[3];	//        green
@@ -49,25 +49,24 @@ typedef struct {
 
 static _REG int projection(_A0(tri *t), _A1(triangle* modelTri)) {
 	int i, width = t->width, height = t->height;
-	scalar xmin = width-1, xmax = 0;
 	
 	// project & find min/max
 	t->ymin = height-1;
 	t->ymax = 0;
+	t->xmin = width-1;
+	t->xmax = 0;
 	
 	for( i = 0; i < 3; i++ ) {
-		scalar x = SCREEN_X( modelTri->vertices[i]->proj_point.x );
-		int    y = SCREEN_Y( modelTri->vertices[i]->proj_point.y ); 
+		int x = SCREEN_X( modelTri->vertices[i]->proj_point.x );
+		int y = SCREEN_Y( modelTri->vertices[i]->proj_point.y ); 
 		t->x[i] = x;
 		t->y[i] = y;
 		t->w[i] = 1.0f / modelTri->vertices[i]->proj_point.z;
-		if(x<xmin) xmin = x;
-		if(x>xmax) xmax = x;
+		if(x<t->xmin) t->xmin = x;
+		if(x>t->xmax) t->xmax = x;
 		if(y<t->ymin) t->ymin = y;
 		if(y>t->ymax) t->ymax = y;
 	}
-	t->xmin = floor(xmin);
-	t->xmax = ceil(xmax);
 	
 	// reject if triange is out of screen
 	if(t->ymin > t->ymax || t->xmin > t->xmax)
@@ -120,17 +119,17 @@ static _REG void color(_A0(tri *t), _A1(triangle* modelTri)) {
 		t->gx = (t->g[0]-t->g[2])*t->dx[0] + (t->g[1]-t->g[2])*t->dx[1];
 		t->bx = (t->b[0]-t->b[2])*t->dx[0] + (t->b[1]-t->b[2])*t->dx[1];
 		
-		// t->r[0] += 0x8000;
-		// t->r[1] += 0x8000;
-		// t->r[2] += 0x8000;
+		t->r[0] += 0x8000;
+		t->r[1] += 0x8000;
+		t->r[2] += 0x8000;
 
-		// t->g[0] += 0x80;
-		// t->g[1] += 0x80;
-		// t->g[2] += 0x80;
+		t->g[0] += 0x80;
+		t->g[1] += 0x80;
+		t->g[2] += 0x80;
 		
-		// t->b[0] += .5;
-		// t->b[1] += .5;
-		// t->b[2] += .5;
+		t->b[0] += .5;
+		t->b[1] += .5;
+		t->b[2] += .5;
 	}
 }
 
@@ -157,7 +156,7 @@ int _REG prepare(_A0(tri *t), _A1(triangle* modelTri)) {
 	return 1;
 }
 
-static void plot(tri *t, int y, scalar x) {
+static _REG void plot(_A0(tri *t), _D0(int y), _FP0(double x)) {
 	if((unsigned)y < (unsigned)t->height) {
 		struct bounds *p = &t->bounds[y];
 		if(x<p->min) p->min = x;
@@ -174,7 +173,7 @@ static void plot(tri *t, int y, scalar x) {
 }
 
 static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
-	scalar x = t->x[i], dx;
+	double x = t->x[i], dx;
 	int y = t->y[i], k = t->y[j] - y;
 	
 	// horiz line
@@ -210,13 +209,29 @@ _REG void plot_triangle(_A0(tri *t))  {
 _REG void crop_triangle(_A0(tri *t))  {
 	int y, m = t->width-1;
 	for(y=t->ymin; y<=t->ymax; ++y) {
-		scalar min =  ceil(t->bounds[y].min);
-		scalar max = floor(t->bounds[y].max);
+		int min =  ceil(t->bounds[y].min);
+		int max = floor(t->bounds[y].max);
+		//printf("%d %d\n", min, max);
 		if(min<0)    min = 0;
 		if(max>m)    max = m;
+		// if(min>max)  min = max;
 		t->bounds[y].min = min;
 		t->bounds[y].max = max;
 	}
+	// for(y=t->ymin; y<t->ymax; ++y) {
+		// if(t->bounds[y].min>t->bounds[y].max) {
+			// t->bounds[y].min = m;
+			// t->bounds[y].max = 0;
+		// } else break;
+	// }
+	// t->ymin = y;
+	// for(y=t->ymax; y>t->ymin; --y) {
+		// if(t->bounds[y].min>t->bounds[y].max) {
+			// t->bounds[y].min = m;
+			// t->bounds[y].max = 0;
+		// } else break;
+	// }
+	// t->ymax = y;
 }
 
 #if M68K==1
@@ -224,41 +239,49 @@ _REG void crop_triangle(_A0(tri *t))  {
 #define draw_span_mono	x_draw_span_mono
 #define draw_span		x_draw_span
 
-void _REG draw_span_mono(_A0(tri *t), _D0(int min), _D1(int max)) {
-	scalar *zb = t->zbuf + min;
-	colour *pb = t->pbuf + min;
+void _REG draw_span_mono(_A0(tri *t), _A1(struct bounds *B)) {
+	int k = B->min;
 	
-	scalar d0 = min*t->dx[0] + t->d[0];
-	scalar d1 = min*t->dx[1] + t->d[1];
+	scalar *zb = t->zbuf + k;
+	colour *pb = t->pbuf + k;
+	
+	scalar d0 = k*t->dx[0] + t->d[0];
+	scalar d1 = k*t->dx[1] + t->d[1];
+
+	if((k=1+B->max-k)>0) {
 	scalar d2 = 1-d0-d1;
 	
 	scalar w = t->w[0]*d0 + t->w[1]*d1 + t->w[2]*d2;
 
-	for(max-=min-1;1 + --max;) {
+	while(1 + --k) {
 		if(w > *zb++ ) {
 			zb[-1] = w;
 			*pb = t->col;
 		}
 		++pb; w += t->wx;
-	}
+	}}
 }
 
-void _REG draw_span(_A0(tri *t), _D0(int min), _D1(int max)) {
-	scalar *zb = t->zbuf + min;
-	colour *pb = t->pbuf + min;
+void _REG draw_span(_A0(tri *t), _A1(struct bounds *B)) {
+	int k = B->min;
 	
-	scalar d0 = min*t->dx[0] + t->d[0];
-	scalar d1 = min*t->dx[1] + t->d[1];
-	scalar d2 = 1-d0-d1;
+	scalar *zb = t->zbuf + k;
+	colour *pb = t->pbuf + k;
 	
+	scalar d0 = k*t->dx[0] + t->d[0];
+	scalar d1 = k*t->dx[1] + t->d[1];
+	
+	if((k=1+B->max-k)>0) {
+	scalar d2 = 1-d0-d1;	
+
 	scalar w = t->w[0]*d0 + t->w[1]*d1 + t->w[2]*d2;
 	scalar r = t->r[0]*d0 + t->r[1]*d1 + t->r[2]*d2;
 	scalar g = t->g[0]*d0 + t->g[1]*d1 + t->g[2]*d2;
 	scalar b = t->b[0]*d0 + t->b[1]*d1 + t->b[2]*d2;
 
 	//printf("min/max=%d/%d\n", min,max);
-
-	for(max-=min-1;1 + --max;) {
+	
+	while(1 + --k) {
 		if(w > *zb++ ) {
 			int t;
 			zb[-1] = w;
@@ -267,7 +290,7 @@ void _REG draw_span(_A0(tri *t), _D0(int min), _D1(int max)) {
 			t = b; ((char*)pb) [3] = t;
 		}
 		++pb; w += t->wx; r += t->rx; g += t->gx; b += t->bx;
-	}
+	}}
 }
 #endif
 
@@ -285,12 +308,12 @@ void _REG draw_triangle(_A0(tri *t)) {
 	t->pbuf += idx;	
 	
 	while(1 + --l) {
-		if(b->min <= b->max) {
+		// if(b->min <= b->max) {
 			if(t->monochrome)
-				draw_span_mono(t, b->min, b->max); 
+				draw_span_mono(t, b); 
 			else
-				draw_span(t, b->min, b->max); 			
-		}
+				draw_span(t, b); 			
+		// }
 		b->min = t->width-1; b->max = 0; ++b;
 		t->d[0] += t->dy[0]; t->d[1] += t->dy[1];
 		t->zbuf -= t->width; t->pbuf -= t->width;
