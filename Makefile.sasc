@@ -1,0 +1,20 @@
+include Makefile
+
+CC  = sc
+EXT = sasc
+FPU = 882
+
+DFLAG   = DEF=
+OFLAGS  = OPT OPTSCHED OPTTIME OPTALIAS DATA=FAR CODE=NEAR
+CFLAGS  = CPU=68$(CPU) MATH=68$(FPU) IDIR=include DEF inline=
+WFLAGS  =
+LDFLAGS = NOICONS
+LIBS    = MATH=$(FPU)
+
+AOUT    = hunk
+
+LINK_TO    = LINK TO
+COMPILE_TO = TO
+
+DATE = :ade/bin/date
+INC_REVISION = c:eval LFORMAT="%n*n;*n\#define REVISION %n*n" TO $*.h  1 + `type $*.h` 

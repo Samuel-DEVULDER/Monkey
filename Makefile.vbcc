@@ -1,0 +1,14 @@
+include Makefile
+
+CC  = vc
+EXT = vbcc 
+
+OFLAGS  = -O1295 -speed -maxoptpasses=99
+CFLAGS  = -cpu=68$(CPU) -fpu=68$(FPU) -c99 -Iinclude/vbcc -Iinclude -Dinline=
+WFLAGS  =
+
+LDFLAGS =
+LIBS    = -lamiga -lm$(FPU)
+
+DATE = :ade/bin/date
+INC_REVISION = c:eval LFORMAT="%n*n;*n\#define REVISION %n*n" TO $*.h  1 + `type $*.h` 

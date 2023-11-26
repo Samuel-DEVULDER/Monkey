@@ -1,0 +1,4 @@
+include Makefile
+
+CC = gcc3
+OFLAGS += -funsafe-math-optimizations -fno-trapping-math

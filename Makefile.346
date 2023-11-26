@@ -1,0 +1,7 @@
+include Makefile
+
+PREFIX   = /opt/amiga
+VASM     = $(PREFIX)/bin/vasm -quiet
+CC       = $(PREFIX)/bin/m68k-amigaos-gcc-3.4.6
+LDFLAGS += -B$(PREFIX)/m68k-amigaos/libnix/lib/libnix  $(PREFIX)/m68k-amigaos/libnix/lib/libnix/swapstack.o
+OFLAGS  += -funsafe-math-optimizations 

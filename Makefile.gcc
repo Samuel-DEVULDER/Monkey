@@ -1,0 +1,70 @@
+CC=gcc295
+CPU=040
+VASM=vasmm68k_mot -quiet
+
+DEFINES=-Dinline=
+
+OFLAGS=-O3 -fomit-frame-pointer
+CFLAGS=-g -noixemul $(OFLAGS) -m68$(CPU) $(DEFINES) -Iinclude -ffast-math -funroll-all-loops
+
+EXE=raster
+
+#CFLAGS= \
+#	-Wall \
+#	-ffast-math \
+#	-O5 \
+#	-g \
+#	-std=c99 \
+
+# 	-mmmx -msse -msse2 -msse3 -msse4a -mssse3 -mfpmath=sse \
+# 	-falign-functions -falign-jumps -falign-labels -falign-loops \
+# 	-fbranch-probabilities -fbranch-target-load-optimize2 \
+# 	-fcprop-registers \
+# 	-fcrossjumping \
+# 	-finline-functions -finline-small-functions \
+# 	-fipa-matrix-reorg \
+# 	-fmodulo-sched \
+# 	-fpeephole2 -fpeephole \
+# 	-fpeel-loops \
+# 	-foptimize-sibling-calls \
+# 	-foptimize-register-move \
+# 	-frounding-math \
+# 	-fsel-sched-pipelining \
+# 	-funsafe-math-optimizations \
+# 	-funsafe-loop-optimizations \
+# 	-funroll-all-loops \
+# 	-masm=intel -m3dnow -mtune=core2
+
+AFLAGS=-m68$(CPU) -Faout -phxass -nowarn=62 -opt-speed $(DEFINES)
+
+LDFLAGS=-g
+LIBS=-lm -noixemul
+
+OBJECTS=\
+	vectors.o \
+	scalars.o \
+	colours.o \
+	buffers.o \
+	matrices.o \
+	models.o \
+	rasterizer.o \
+	main.o
+
+all: $(EXE)
+
+lha: all
+	lha -r u $(EXE).lha $(EXE).#? #?.c #?.s #?.h #?.raw Makefile#? #?.txt include
+
+$(EXE): $(OBJECTS)
+	$(CC) $(LDFLAGS) $^ -o $@  $(LIBS)
+	cp $@ $@.$(CC)
+
+clean:
+	-rm -r *.o $(EXE) $(EXE).$(CC)
+	
+%.o: %.c Makefile
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.s Makefile
+#	$(CC) $(CFLAGS) -c -o $@ $<
+	$(VASM) $(AFLAGS) -o $@ $<

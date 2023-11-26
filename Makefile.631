@@ -1,0 +1,7 @@
+include Makefile
+
+PREFIX   = /opt/amiga/bin
+VASM     = $(PREFIX)/vasm -quiet
+CC       = $(PREFIX)/m68k-amigaos-gcc-6.3.1b
+LDFLAGS += -Wl,--allow-multiple-definition
+OFLAGS  += -funsafe-math-optimizations 
