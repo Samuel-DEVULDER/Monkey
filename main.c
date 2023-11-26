@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.1415926
+#endif
 
 #include <exec/execbase.h>
 #include <exec/memory.h>
@@ -263,11 +268,11 @@ static _REG double z(_FP0(double x), _FP1(double y)) {
 }
 
 static _REG double dz_dx(_FP0(double x), _FP1(double y)) {
-	return (z(x+1/1024.0,y)-z(x,y))*1024.0;
+	return (z(x+1/10240.0,y)-z(x,y))*10240.0;
 }
 
 static _REG double dz_dy(_FP0(double x), _FP1(double y)) {
-	return (z(x,y+1/1024.0)-z(x,y))*1024.0;
+	return (z(x,y+1/10240.0)-z(x,y))*10240.0;
 }
 
 static void apply_z(model *model) {

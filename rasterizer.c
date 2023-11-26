@@ -45,15 +45,19 @@ typedef struct {
 		int *xmax;
 	} extra;
 //	
+	int x;
+#ifndef dx
+	real   dx[3];
+#endif
 	scalar dz;
 	scalar *zb;
 	colour *out;
 	real   d[3];
-#ifndef dx
-	real   dx[3];
-#endif
-	int x;
 } tri;
+
+int _REG find_span(_A0(tri *t));
+void _REG draw_span_mono(_A0(tri *t), _D0(colour col));
+void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri));
 
 void project_onto_screen(tri *t, triangle* modelTri) {
 	int width  = t->extra.width-1;
@@ -644,6 +648,7 @@ next:
 	}
 }
 
+#if M68K==0
 int _REG find_span(_A0(tri *t)) {
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
 	int x = 0, xmax=t->xmax - t->x;
@@ -656,11 +661,11 @@ int _REG find_span(_A0(tri *t)) {
 	t->d[0]=d0; t->d[1]=d1; t->d[2]=d2;
 	t->zb += x; t->out += x; t->x += x;
 	return 1;
-}
+} 
 
 void _REG draw_span_mono(_A0(tri *t), _D0(colour col)) {
-	scalar z = real2scalar(t->c[1]*t->d[1] + t->c[2]*t->d[2] + t->c[0]*t->d[0]), *zb = t->zb;
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
+	scalar z = real2scalar(t->c[1]*d1 + t->c[2]*d2 + t->c[0]*d0), *zb = t->zb;
 	colour *out=t->out;
 //	int x=t->x;
 //	do {
@@ -679,9 +684,9 @@ void _REG draw_span_mono(_A0(tri *t), _D0(colour col)) {
 }
 
 void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri)) {
-	scalar z = real2scalar(t->c[0]*t->d[0] + t->c[1]*t->d[1] + t->c[2]*t->d[2]), *zb = t->zb;
-	colour *out=t->out;
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
+	scalar z = real2scalar(t->c[0]*d0 + t->c[1]*d1 + t->c[2]*d2), *zb = t->zb;
+	colour *out=t->out;
 //	int x=t->x;
 //	do {
 	for(;;) {
@@ -709,6 +714,7 @@ void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri)) {
 	}
 //	} while(++x<=t->xmax);
 }
+#endif
 
 void _REG draw_triangle_5(_A0(tri *t), _A1(triangle *modelTri)) {
 	int y = t->ymin, idx;
