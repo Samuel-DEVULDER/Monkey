@@ -241,6 +241,7 @@ static inline _REG void plot(_A0(tri *t), _D0(int x), _D1(int y)) {
 	if((unsigned)y>=(unsigned)t->extra.height) return;
 	if(x<t->extra.xmin[y]) t->extra.xmin[y]=x;
 	//if(x>t->extra.xmax[y]) t->extra.xmax[y]=x+1;	
+	//t->extra.pbuf[x + t->extra.width*(t->extra.height-y)] = -1;
 }
 #endif
 

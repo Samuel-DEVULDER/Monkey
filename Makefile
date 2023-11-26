@@ -1,7 +1,7 @@
 EXE = monkey
 
 WIDTH   = 320
-CPU     = 040
+CPU     = 060
 FPU     = 881
 M68K    = 1
 REGPARM = 1
@@ -80,8 +80,8 @@ tst%: all
 lha: all bak
 
 bak: 
-	lha -r u $(EXE)-`:ade/bin/date +%d%m%y`.lha $(EXE).#? #?.c #?.s #?.h #?.raw Makefile#? #?.txt include
-	lha d $(EXE)-`:ade/bin/date +%d%m%y`.lha $(EXE).#?.lha
+	lha -r u $(EXE)-`:ade/bin/date +%d%m%y`.lha "$(EXE).#?" "#?.c" "#?.s" "#?.h" "#?.raw" "Makefile#?" "#?.txt" include
+	lha d $(EXE)-`:ade/bin/date +%d%m%y`.lha "$(EXE).#?.lha" "#?.lnk"
 
 .PHONY: VERstring.o
 VERstring.o: VERstring.c

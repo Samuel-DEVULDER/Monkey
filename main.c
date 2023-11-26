@@ -95,7 +95,7 @@ static struct RastPort   CybRasPort;
 #endif
 static ULONG width = WIDTH, height = HEIGHT;
 static LONG DispID = INVALID_ID;
-BYTE mc68080, waitTOF, directdraw, win;
+BYTE mc68080, waitTOF, directdraw, win, benchmark;
 
 #define TIMINGS 20
 double timings[TIMINGS];
@@ -127,7 +127,7 @@ void *alloc(int size) {
 static void usage(char *progname) {
 	fprintf(stdout,"\n");
 	fprintf(stdout,"Usage: %s [?|-h|--help]\n", progname);
-	fprintf(stdout,"\t[-model <name>]\n");
+	fprintf(stdout,"\t[-model <name>] [-benchmark]\n");
 	fprintf(stdout,"\t[-68K]\n");
 	fprintf(stdout,"\t[-win|-id 0x<ModeID>] [-size <width> <height>]\n");
 	fprintf(stdout,"\t[-directdraw] [-waitTOF]\n");
@@ -197,6 +197,8 @@ static void parseCLI(int ac, char **av) {
 			if(t) DispID = t;
 		} else if(!strcmp("-model", av[i]) && i+1<ac) {
 			modelName = av[++i];
+		} else if(!strcmp("-benchmark", av[i])) {
+			benchmark = -1;
 		} else {
 			error("Invalid argument: \"%s\"", av[i]);
 		}
@@ -253,8 +255,35 @@ double eclock(void)  {
     return 0;
 }
 
+double angleX = 0;
+
+static _REG double z(_FP0(double x), _FP1(double y)) {
+	double d2 = x*x+y*y;
+	return sin(6*M_PI*sqrt(d2)+rotAngle)*exp(-d2)*.1;
+}
+
+static _REG double dz_dx(_FP0(double x), _FP1(double y)) {
+	return (z(x+1/1024.0,y)-z(x,y))*1024.0;
+}
+
+static _REG double dz_dy(_FP0(double x), _FP1(double y)) {
+	return (z(x,y+1/1024.0)-z(x,y))*1024.0;
+}
+
+static void apply_z(model *model) {
+	vertex *v;
+	for(v=model->vertices; v; v=v->next) {
+		v->point.y = z(v->point.x, v->point.z);
+		
+		v->normal.x = -dz_dy(v->point.x, v->point.z);
+		v->normal.z = -dz_dx(v->point.x, v->point.z);
+		v->normal.y = 1;
+	}
+}
+
 void display(void) {
-	matrix transMatrix, rotMatrixA, rotMatrixB, rotMatrixC, mvMatrixO;
+	matrix transMatrix, mvMatrixO, rotMatrixA; 
+	matrix tmp1, tmp2;
 	matrix pMatrixO;
 
 	static scalar _a1=.7,_a2, _b1=.7,_b2,_c1=.7,_c2;
@@ -278,8 +307,12 @@ void display(void) {
 	} while(0);
 
 	matrixTranslate(&transMatrix, 0, 0, zDist);
-	matrixRotY(&rotMatrixA, rotAngle);
+	matrixRotY(&tmp2, rotAngle);
+	matrixRotX(&tmp1, angleX);
+	matrixMult(&rotMatrixA, &tmp1, &tmp2);
 	matrixMult(&mvMatrixO, &transMatrix, &rotMatrixA);
+
+	if(modelName==redrat) apply_z(&globalModel);
 
 	matrixPerspective(&pMatrixO, 45, 4.0/3.0, 1.0, 32.0 );
 
@@ -290,6 +323,7 @@ void display(void) {
 	//shade(&globalModel, 5, 5, 5, 0);
 	//shade(&globalModel, 5, 5, 5, 1);
 	//shade(&globalModel, 5, 5, 5, 2);
+	
 
 	clear(&frameBuffer);
 	rasterize(&globalModel, &frameBuffer, zbuf);
@@ -340,7 +374,15 @@ int events(void) {
 				break;
 			
 			case IDCMP_RAWKEY:
+				if(benchmark) break;
 				switch(code) {
+					case RAWKEY_CURSORLEFT:
+						angleX += M_PI*2/32;
+						break;
+					case RAWKEY_CURSORRIGHT:
+						angleX -= M_PI*2/32;
+						break;
+					
 					case RAWKEY_CURSORDOWN:
 						zDist *= 1.025;
 						if(zDist>30) zDist=30;
@@ -354,7 +396,7 @@ int events(void) {
 			
 			case IDCMP_VANILLAKEY: 
 				if(code==3 || code==27) {sigs |= SIGBREAKF_CTRL_C;paused=0;}
-				if(code==4) paused = ~paused;
+				if(code==4 && !benchmark) paused = ~paused;
 				break;
 			}
 		}
@@ -435,9 +477,9 @@ static  void makeSquareMesh(model *newModel, int w, int h) {
 		for(j=0; j<h; ++j) {
 			vertex *p = &pt(i,j);
 			
-			p->point.x = i*_w - 0.5;
-			p->point.z = j*_h - 0.5;
-			p->point.y = p->point.x*p->point.x+p->point.z*p->point.z;
+			p->point.x = (i*_w - 0.5)*2;
+			p->point.z = (j*_h - 0.5)*2;
+			p->point.y = 0;
 			
 			p->normal.x = 0;
 			p->normal.z = 0;
@@ -452,13 +494,13 @@ static  void makeSquareMesh(model *newModel, int w, int h) {
 		for(j=1; j<h; ++j) {
 			t->ID = t - newModel->triangles;
 			t->vertices[0] = &pt(i-1,j-1);
-			t->vertices[1] = &pt(i,j-1);
-			t->vertices[2] = &pt(i,j);
+			t->vertices[1] = &pt(i,j);
+			t->vertices[2] = &pt(i,j-1);
 			++t;
 			t->ID = t - newModel->triangles;
 			t->vertices[0] = &pt(i,j);
-			t->vertices[1] = &pt(i-1,j);
-			t->vertices[2] = &pt(i-1,j-1);
+			t->vertices[1] = &pt(i-1,j-1);
+			t->vertices[2] = &pt(i-1,j);
 			++t;
 		}
 	}
@@ -466,8 +508,8 @@ static  void makeSquareMesh(model *newModel, int w, int h) {
 
 int main(int argc, char **argv) {
 	LONG penBLACK, penWHITE;
-	char *last_fps = NULL;
-	int XOff=0,YOff=0, first;
+	int XOff=0,YOff=0, first, num_frames=0;
+	double total_time = 0;
 
 	atexit(cleanup);
 	openLIBS(); 
@@ -476,7 +518,9 @@ int main(int argc, char **argv) {
 	
 	if(!strcmp(redrat, modelName)) {
 		modelName = redrat;
-		makeSquareMesh(&globalModel,20,20);
+		makeSquareMesh(&globalModel,51,51);
+		zDist = 4;
+		angleX = M_PI/6;
 	} else if(!makeModelFromMeshFile(&globalModel, modelName)) {
 		exit(1);
 	}
@@ -529,7 +573,7 @@ int main(int argc, char **argv) {
 
 	/* custom screen */
 	if(!W) {
-		int depth;
+		int depth=32;
 		win = 0;
 		if(DispID==INVALID_ID)
     		DispID = BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
@@ -552,6 +596,15 @@ int main(int argc, char **argv) {
 			     CYBRBIDTG_Depth,depth=15,
 			     TAG_DONE);
 		if(DispID==INVALID_ID) error("Can not find %dx%dx%d screenmode!", width,height,depth);
+
+		if(1) {
+			int w = GetCyberIDAttr(CYBRIDATTR_WIDTH,DispID);
+			int h = GetCyberIDAttr(CYBRIDATTR_HEIGHT,DispID);
+			depth = GetCyberIDAttr(CYBRIDATTR_DEPTH,DispID);
+			printf("Using -id 0x%lx (%d x %d x %d)\n", DispID, w, h, depth);
+			if(width>w)  width = w;
+			if(height>h) height = h;
+		}
 
 		S = OpenScreenTags(NULL,
 			    SA_Quiet,     TRUE,
@@ -584,7 +637,8 @@ int main(int argc, char **argv) {
 		if(!W) error("OpenWindowTags");
 
 		// align to cybergfx
-		width  = GetCyberMapAttr(RP->BitMap,CYBRMATTR_XMOD)/GetCyberMapAttr(RP->BitMap,CYBRMATTR_BPPIX);
+		width  = GetCyberMapAttr(RP->BitMap,CYBRMATTR_XMOD);
+		width /= GetCyberMapAttr(RP->BitMap,CYBRMATTR_BPPIX);
 		height = GetCyberMapAttr(RP->BitMap,CYBRMATTR_HEIGHT);
 	}
 
@@ -610,7 +664,7 @@ int main(int argc, char **argv) {
 	zbuf = alloc( sizeof(scalar) * frameBuffer.width * frameBuffer.size );
 
 	first = !win;
-
+	total_time = eclock();
 	while(1) {
 		LONG sigs = SetSignal(0L,0L);
 		if(waitTOF) WaitTOF();
@@ -642,23 +696,32 @@ int main(int argc, char **argv) {
 			static char buf[256];
 			long f = 1000*TIMINGS/(1e-6+(t-s));
 			long i = 0;
-			while((f-=100000)>=0) i+=100; f+=100000;
-			while((f-=10000)>=0)  i+=10;  f+=10000;
-			while((f-=1000)>=0)   i+=1;   f+=1000;
+			while((f-=100000)>=0) {i+=100;} f+=100000;
+			while((f-=10000)>=0)  {i+=10;}  f+=10000;
+			while((f-=1000)>=0)   {i+=1;}   f+=1000;
 			sprintf(buf,"FPS: %ld.%03ld (%s)", i, f, argv[0]);
 			// doesn't change anything ==> SetAPen(&CybRasPort, 15);
-			Text(RP, last_fps=buf, strlen(buf));
+			Text(RP, buf, strlen(buf));
 		    } else {
 			char *s="FPS: stabilizing...";
 			Text(RP, s, strlen(s));
-			last_fps = NULL;
 		    }       
 		} while(0);
 		sigs |= events();
+		++num_frames; 
+		if(benchmark && num_frames>=500) sigs |= SIGBREAKF_CTRL_C;
 		if(sigs & SIGBREAKF_CTRL_C) break;
 		if(first) {first = 0; ActivateWindow(W); ScreenToFront(S);}
 	}
-	if(last_fps) printf("%s\n", last_fps);
+	total_time = eclock()-total_time;
+	if(total_time>0) {
+		long f = (1000*num_frames)/total_time;
+		long i = 0;
+		while((f-=100000)>=0) {i+=100;} f+=100000;
+		while((f-=10000)>=0)  {i+=10;}  f+=10000;
+		while((f-=1000)>=0)   {i+=1;}   f+=1000;
+		printf("%s: fps %ld.%03ld (%d frames)\n", argv[0], i, f, num_frames);
+	}
 	
 	free(zbuf);
 	freeBuffer(&frameBuffer);
