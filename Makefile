@@ -81,6 +81,7 @@ lha: all bak
 
 bak: 
 	lha -r u $(EXE)-`:ade/bin/date +%d%m%y`.lha $(EXE).#? #?.c #?.s #?.h #?.raw Makefile#? #?.txt include
+	lha d $(EXE)-`:ade/bin/date +%d%m%y`.lha $(EXE).#?.lha
 
 .PHONY: VERstring.o
 VERstring.o: VERstring.c

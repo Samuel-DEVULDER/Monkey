@@ -29,7 +29,9 @@ _REG void matrixNormalTransform(_A0(matrix* r), _A1(matrix *m));
 _REG void matrixApply(_D0(vec3* r), _A0(matrix *a), _A1(vec3 *b));
 _REG void matrixApplyNormal(_D0(vec3* r), _A0(matrix *a), _A1(vec3 *b));
 _REG void matrixId(_A0(matrix* m));
+_REG void matrixRotX(_A0(matrix* m), _FP0(scalar a));
 _REG void matrixRotY(_A0(matrix* m), _FP0(scalar a));
+_REG void matrixRotZ(_A0(matrix* m), _FP0(scalar a));
 _REG void matrixApplyPerspective(_D0(vec3* r), _A0(matrix *a), _A1(vec3 *b));
 
 #define matrixScale(m,x,y,z) do { \
@@ -41,9 +43,9 @@ _REG void matrixApplyPerspective(_D0(vec3* r), _A0(matrix *a), _A1(vec3 *b));
 
 
 #define matrixTranslate(m,x,y,z) do {\
-	(m)->v[0]  = 1; (m)->v[1]  = 0; (m)->v[2]  = 0; (m)->v[3]  = -x;\
-	(m)->v[4]  = 0; (m)->v[5]  = 1; (m)->v[6]  = 0; (m)->v[7]  = -y;\
-	(m)->v[8]  = 0; (m)->v[9]  = 0; (m)->v[10] = 1; (m)->v[11] = -z;\
+	(m)->v[0]  = 1; (m)->v[1]  = 0; (m)->v[2]  = 0; (m)->v[3]  = -(x);\
+	(m)->v[4]  = 0; (m)->v[5]  = 1; (m)->v[6]  = 0; (m)->v[7]  = -(y);\
+	(m)->v[8]  = 0; (m)->v[9]  = 0; (m)->v[10] = 1; (m)->v[11] = -(z);\
 	(m)->v[12] = 0; (m)->v[13] = 0; (m)->v[14] = 0; (m)->v[15] = 1;\
 } while(0)
 

@@ -9,7 +9,7 @@
 #define SCREEN_X(p) (((p)+1)*((scalar)(width/2)))
 #define SCREEN_Y(p) (((p)+1)*((scalar)(height/2)))
 
-#if 0
+#if 1
 #define real scalar
 #define real2scalar(x) (x)
 #define scalar2real(x) (x)
@@ -661,9 +661,9 @@ void _REG draw_span_mono(_A0(tri *t), _D0(colour col)) {
 	scalar z = real2scalar(t->c[1]*t->d[1] + t->c[2]*t->d[2] + t->c[0]*t->d[0]), *zb = t->zb;
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
 	colour *out=t->out;
-	int x=t->x;
-	do {
-//	for(;;) {
+//	int x=t->x;
+//	do {
+	for(;;) {
 		if(z > *zb++ ) {
 			zb[-1] = z;
 			*out = col;
@@ -673,17 +673,17 @@ void _REG draw_span_mono(_A0(tri *t), _D0(colour col)) {
 		if((d1 += t->dx[1])<0) break;
 		if((d2 += t->dx[2])<0) break;
 		z += t->dz; ++out;
-//	}
-	} while(++x<=t->xmax);
+	}
+//	} while(++x<=t->xmax);
 }
 
 void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri)) {
 	scalar z = real2scalar(t->c[0]*t->d[0] + t->c[1]*t->d[1] + t->c[2]*t->d[2]), *zb = t->zb;
 	colour *out=t->out;
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
-	int x=t->x;
-	do {
-//	for(;;) {
+//	int x=t->x;
+//	do {
+	for(;;) {
 		if(z > *zb++ ) {
 			zb[-1] = z;
 			*out = makeColour(
@@ -705,8 +705,8 @@ void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri)) {
 		if((d1 += t->dx[1])<0) break;
 		if((d2 += t->dx[2])<0) break;
 		z += t->dz;	++out; 
-//	}
-	} while(++x<=t->xmax);
+	}
+//	} while(++x<=t->xmax);
 }
 
 void _REG draw_triangle_5(_A0(tri *t), _A1(triangle *modelTri)) {

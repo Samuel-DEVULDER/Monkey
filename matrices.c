@@ -257,3 +257,19 @@ _REG void matrixRotY(_A0(matrix* m), _FP0(scalar a)) {
 	m->v[8]  = sa; m->v[9]  = 0; m->v[10] = ca;  m->v[11] = 0;
 	m->v[12] = 0;  m->v[13] = 0; m->v[14] = 0;   m->v[15] = 1;
 }
+
+_REG void matrixRotX(_A0(matrix* m), _FP0(scalar a)) {
+	scalar c = scalarCos(a), s = scalarSin(a);
+	m->v[0]  = 1; m->v[1]  = 0; m->v[2]  = 0; m->v[3]  = 0;
+	m->v[4]  = 0; m->v[5]  = c; m->v[6]  =-s; m->v[7]  = 0;
+	m->v[8]  = 0; m->v[9]  = s; m->v[10] = c; m->v[11] = 0;
+	m->v[12] = 0; m->v[13] = 0; m->v[14] = 0; m->v[15] = 1;
+}
+
+_REG void matrixRotZ(_A0(matrix* m), _FP0(scalar a)) {
+	scalar c = scalarCos(a), s = scalarSin(a);
+	m->v[0]  = c; m->v[1]  =-s; m->v[2]  = 0; m->v[3]  = 0;
+	m->v[4]  = s; m->v[5]  = c; m->v[6]  = 0; m->v[7]  = 0;
+	m->v[8]  = 0; m->v[9]  = 0; m->v[10] = 1; m->v[11] = 0;
+	m->v[12] = 0; m->v[13] = 0; m->v[14] = 0; m->v[15] = 1;
+}

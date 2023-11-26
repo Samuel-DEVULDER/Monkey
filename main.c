@@ -75,6 +75,11 @@ struct Device	   *TimerBase;
 struct Library			*TimerBase;
 #endif
 
+#define RAWKEY_CURSORUP    0x4C   /* CURSORUP */
+#define RAWKEY_CURSORDOWN  0x4D   /* CURSORDOWN */
+#define RAWKEY_CURSORLEFT  0x4F   /* CURSORLEFT */
+#define RAWKEY_CURSORRIGHT 0x4E   /* CURSORRIGHT */
+ 
 static struct Screen    *S;
 static struct Window    *W;
 static struct ColorMap  *CM;
@@ -99,7 +104,7 @@ double timings[TIMINGS];
 
 buffer frameBuffer;
 model globalModel;
-scalar rotAngle, *zbuf;
+scalar rotAngle, *zbuf, zDist = 6;
 char *modelName = "suzanne.raw";
 char *redrat = "redrat";
 
@@ -249,7 +254,7 @@ double eclock(void)  {
 }
 
 void display(void) {
-	matrix transMatrix, rotMatrixA, mvMatrixO;
+	matrix transMatrix, rotMatrixA, rotMatrixB, rotMatrixC, mvMatrixO;
 	matrix pMatrixO;
 
 	static scalar _a1=.7,_a2, _b1=.7,_b2,_c1=.7,_c2;
@@ -272,7 +277,7 @@ void display(void) {
 		while(1 + --i) *f++ = FLT_MIN;
 	} while(0);
 
-	matrixTranslate(&transMatrix, 0, 0, 6);
+	matrixTranslate(&transMatrix, 0, 0, zDist);
 	matrixRotY(&rotMatrixA, rotAngle);
 	matrixMult(&mvMatrixO, &transMatrix, &rotMatrixA);
 
@@ -332,6 +337,19 @@ int events(void) {
 	
 			case IDCMP_CLOSEWINDOW:
 				sigs |= SIGBREAKF_CTRL_C;
+				break;
+			
+			case IDCMP_RAWKEY:
+				switch(code) {
+					case RAWKEY_CURSORDOWN:
+						zDist *= 1.025;
+						if(zDist>30) zDist=30;
+						break;
+					case RAWKEY_CURSORUP:
+						zDist /= 1.025;
+						if(zDist<3.4) zDist=3.4;
+						break;
+				}
 				break;
 			
 			case IDCMP_VANILLAKEY: 
@@ -484,6 +502,7 @@ int main(int argc, char **argv) {
 					IDCMP_VANILLAKEY|
 					IDCMP_CLOSEWINDOW|
 					IDCMP_NEWSIZE|
+					IDCMP_RAWKEY|
 					0,
 				   WA_Flags,	
 					WFLG_DRAGBAR|
@@ -554,6 +573,7 @@ int main(int argc, char **argv) {
 		       WA_Height,       S->Height,
 		       WA_CustomScreen, (ULONG)S,
 		       WA_IDCMP,	IDCMP_VANILLAKEY|
+					IDCMP_RAWKEY|
 					0,
 		       WA_Flags,	WFLG_NOCAREREFRESH|
 					WFLG_BACKDROP|
