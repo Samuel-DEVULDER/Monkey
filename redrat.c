@@ -8,10 +8,6 @@
 #define BOTTOM_FLAG 	3
 #define PARAM_FLAG 		4
 
-#ifndef M_PI
-#define M_PI 3.1415926
-#endif
-
 extern void *alloc(int size);
 
 static int cmp_fcn(const void *a_, const void *b_) {
@@ -32,10 +28,11 @@ static void build_list(model *mdl, struct aa_node *nd) {
 }
 
 static const vertex *add(aa_tree *tree, float u, float v, float w, int flags) {
-	param_vertex *p = alloc(sizeof(*p)), *p2;
-	scalar sqrt2 = scalarSqrt(2);
-	scalar phi = -2*M_PI*u;
+	param_vertex *p = alloc(sizeof(*p));
+	scalar sqrt2 = 1.4142135623730950488016887242097f;
+	scalar phi = -2*scalarPI*u;
 	scalar x = scalarCos(phi)*v*sqrt2, y = scalarSin(phi)*v*sqrt2;
+	const param_vertex *p2;
 	
 	scalar s=scalarAbs(x);
 	scalar t=scalarAbs(y);
@@ -44,6 +41,9 @@ static const vertex *add(aa_tree *tree, float u, float v, float w, int flags) {
 	if(s>1) { // clip
 		x /= s;
 		y /= s;
+	} else if(0 && s<0.5) {
+		x = ((int)(x*128+.5))/128.0;
+		y = ((int)(y*128+.5))/128.0;		
 	}
 	
 	p->u     = u;
@@ -119,7 +119,7 @@ model *makeRedratMesh(model *newModel, int w, int h) {
 	aa_tree tree; int i, j, id=0;
 	triangle *tri;
 
-	newModel->triangleCount = 2 + w + 2*(h-2)*w + 2*w;
+	newModel->triangleCount = 2*h*w;
 	newModel->curTriangle = 0;
 	newModel->triangles = alloc(sizeof(triangle)*newModel->triangleCount);
 	
@@ -128,11 +128,19 @@ model *makeRedratMesh(model *newModel, int w, int h) {
 	/* create triangles */
 	
 	/* flat bottom */
-	id = quad(&tree, newModel->triangles, id,
-		7.0/8,1, BOTTOM_FLAG,
-		5.0/8,1, BOTTOM_FLAG,
-		3.0/8,1, BOTTOM_FLAG,
-		1.0/8,1, BOTTOM_FLAG); 
+	if((w&7) == 0)
+		id = quad(&tree, newModel->triangles, id,
+			7.0/8,1, BOTTOM_FLAG,
+			5.0/8,1, BOTTOM_FLAG,
+			3.0/8,1, BOTTOM_FLAG,
+			1.0/8,1, BOTTOM_FLAG); 
+	else for(i=w; --i>=0;) {
+		id = tria(&tree, newModel->triangles, id,
+			(i+1)*_w, 1, BOTTOM_FLAG,
+			(i+0)*_w, 1, BOTTOM_FLAG,
+			0,        0, BOTTOM_FLAG
+		);
+	}
 	
 	/* surface */
 	for(i=w; --i>=0;) {
@@ -142,8 +150,7 @@ model *makeRedratMesh(model *newModel, int w, int h) {
 			(i+1)*_w,_h, SURFACE_FLAG + PARAM_FLAG
 		);
 	}
-	for(i=w; --i>=0;) 
-	for(j=h-1; --j>=1;) {
+	for(i=w; --i>=0;) for(j=h-1; --j>=1;) {
 		id=quad(&tree, newModel->triangles, id, 
 			(i+0)*_w,(j+0)*_h, SURFACE_FLAG + PARAM_FLAG,
 			(i+0)*_w,(j+1)*_h, SURFACE_FLAG + PARAM_FLAG,
@@ -192,12 +199,12 @@ model *makeRedratMesh(model *newModel, int w, int h) {
 static double t;
 
 static _REG double z(_FP0(double x), _FP1(double y)) {
-	double d2 = x*x+y*y, d=sqrt(d2);
-	return scalarSin(5*M_PI*d/log(2+d)-t)/(1+d)*.2+.1;
+	double d2 = x*x+y*y, d=scalarSqrt(d2);
+	return scalarSin(5*scalarPI*d/log(2+d)-t)/(1+d)*.1+.1;
 	// return 0;
 }
 
-#define DELTA (1/4096.0)
+#define DELTA (1/1024.0)
 static _REG double dz_dx(_FP0(double x), _FP1(double y)) {
 	return (z(x+DELTA,y)-z(x-DELTA,y))/(2*DELTA);
 }

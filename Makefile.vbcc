@@ -4,7 +4,7 @@ CC  = vc
 EXT = vbcc 
 
 OFLAGS  = -O1295 -speed -maxoptpasses=99
-CFLAGS  = -cpu=68$(CPU) -fpu=68$(FPU) -c99 -Iinclude/vbcc -Iinclude -Dinline=
+CFLAGS  = -cpu=68$(CPU) -fpu=68$(FPU) -c99 -Iinclude/vbcc -Iinclude
 WFLAGS  =
 
 LDFLAGS =

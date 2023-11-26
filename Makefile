@@ -28,6 +28,7 @@ LINK_TO    = -o
 
 DATE         = date
 INC_REVISION = read n < $*.h; n=`expr $$n + 1`; echo > $*.h $$n; echo >> $*.h ";"; echo >>$*.h "\#define REVISION $$n"
+POST_BUILD   =
 
 OUTPUT  = $(EXE).$(EXT)
 
@@ -91,6 +92,7 @@ VERstring.o: VERstring.c
 
 $(OUTPUT): $(OBJECTS) VERstring.o
 	$(CC) $(LDFLAGS) $^ $(LINK_TO) $(OUTPUT) $(LIBS)
+	$(POST_BUILD)
 
 clean:
 	-rm $(OUTPUT) *.o >NIL:

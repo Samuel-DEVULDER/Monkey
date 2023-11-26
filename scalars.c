@@ -1,24 +1,29 @@
 /**
  * Scalar values.
  * (c) 2010 L. Diener
+ * adapted to amiga (m68k) by S.Devulder 2018.
  */
 
 #include "scalars.h"
 #include <math.h>
 
+float costab[] = {
+#include "costab.h"	
+};
+
 // Scalar value functions
 // Assume we're using IEEE floats or doubles.
-inline scalar nextScalar(scalar s) {
+scalar nextScalar(scalar s) {
 	return( s + 0.0001 );
 // 	return nextafter( s, s + ((scalar)1) );
 }
 
-inline scalar prevScalar(scalar s) {
+scalar prevScalar(scalar s) {
 	return( s - 0.0001 );
 // 	return nextafter( s, s - ((scalar)1) );
 }
 
-inline scalar scalarRand() {
+scalar scalarRand() {
 	return (((float)rand()) / ((float)RAND_MAX));
 }
 

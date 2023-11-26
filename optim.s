@@ -659,10 +659,61 @@ _scalarInvSqrt
 *		rts
 *.1
 		rsqrt	fp0,d0,fp1
-		fmove.s	fp0,d0		; <-- gcc :(
+*		fmove.s	fp0,d0		; <-- gcc :(
 		rts
 
- endc
+		xref	_costab
+		xdef	_scalarSin
+_scalarSin:
+	IFND	REGPARM
+		fmove.d	4(sp),fp0
+	ENDC
+		xdef	@scalarSin
+@scalarSin:
+		fmul.s  #1303.7972938088065906186957895476,fp0
+		lea		_costab,a0		; fp1 preserved
+		fmove.l fp0,d0
+		sub.w	#2048,d0
+		and.w	#8191,d0
+		fmove.s (a0,d0.w*4),fp0
+		fmove.s fp0,d0
+		rts
+	
+		xdef	_scalarCos
+_scalarCos:
+	IFND	REGPARM
+		fmove.d	4(sp),fp0
+	ENDC
+		xdef	@scalarCos
+@scalarCos:
+*		fabs	fp0
+		fmul.s  #1303.7972938088065906186957895476,fp0
+		lea		_costab,a0		; fp1 preserved
+		fmove.l fp0,d0
+		and.w	#8191,d0
+		fmove.s (a0,d0.w*4),fp0
+		fmove.s fp0,d0
+		rts
+
+		xdef	_scalarTan
+_scalarTan:
+	IFND	REGPARM
+		fmove.d	4(sp),fp0
+	ENDC
+		xdef	@scalarTan
+@scalarTan:
+		fmul.s  #1303.7972938088065906186957895476,fp0
+		lea	_costab,a0		; fp1 preserved
+		fmove.l fp0,d0
+		sub.w	#2048,d0
+		and.w	#8191,d0
+		fmove.s (a0,d0.w*4),fp0
+		add.w	#2048,d0
+		and.w	#8191,d0
+		fdiv.s  (a0,d0.w*4),fp0
+		fmove.s fp0,d0
+		rts
+	endc		; M68K
  
 * 	struct span {
 *		int x, xmax;		

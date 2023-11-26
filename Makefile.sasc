@@ -6,7 +6,7 @@ FPU = 882
 
 DFLAG   = DEF=
 OFLAGS  = OPT OPTSCHED OPTTIME OPTALIAS DATA=FAR CODE=NEAR
-CFLAGS  = CPU=68$(CPU) MATH=68$(FPU) IDIR=include DEF inline=
+CFLAGS  = CPU=68$(CPU) MATH=68$(FPU) IDIR=include DEF inline= IGNORE=88 IGNORE=89 IGNORE=85
 WFLAGS  =
 LDFLAGS = NOICONS
 LIBS    = MATH=$(FPU)
@@ -18,3 +18,4 @@ COMPILE_TO = TO
 
 DATE = :ade/bin/date
 INC_REVISION = c:eval LFORMAT="%n*n;*n\#define REVISION %n*n" TO $*.h  1 + `type $*.h` 
+POST_BUILD = delete \#?.lnk
