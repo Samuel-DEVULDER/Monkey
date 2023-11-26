@@ -53,11 +53,17 @@ typedef struct {
 	scalar *zb;
 	colour *out;
 	real   d[3];
+	scalar red[3];
+	scalar grn[3];
+	scalar blu[3];
+	scalar d_r;
+	scalar d_g;
+	scalar d_b;
 } tri;
 
 int _REG find_span(_A0(tri *t));
 void _REG draw_span_mono(_A0(tri *t), _D0(colour col));
-void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri));
+void _REG draw_span(_A0(tri *t));
 
 void project_onto_screen(tri *t, triangle* modelTri) {
 	int width  = t->extra.width-1;
@@ -683,34 +689,30 @@ void _REG draw_span_mono(_A0(tri *t), _D0(colour col)) {
 //	} while(++x<=t->xmax);
 }
 
-void _REG draw_span(_A0(tri *t), _A1(triangle *modelTri)) {
+void _REG draw_span(_A0(tri *t)) {
 	real d0=t->d[0], d1=t->d[1], d2=t->d[2];
 	scalar z = real2scalar(t->c[0]*d0 + t->c[1]*d1 + t->c[2]*d2), *zb = t->zb;
 	colour *out=t->out;
+	scalar red = t->red[0]*d0 + t->red[1]*d1 + t->red[2]*d2;
+	scalar grn = t->grn[0]*d0 + t->grn[1]*d1 + t->grn[2]*d2;
+	scalar blu = t->blu[0]*d0 + t->blu[1]*d1 + t->blu[2]*d2;
+//	d_r = d_g = d_b = 0;
 //	int x=t->x;
 //	do {
 	for(;;) {
 		if(z > *zb++ ) {
+			int t;
 			zb[-1] = z;
-			*out = makeColour(
-					real2scalar(
-					modelTri->vertices[0]->color.x * d1 +
-					modelTri->vertices[1]->color.x * d2 +
-					modelTri->vertices[2]->color.x * d0),
-					real2scalar(	
-					modelTri->vertices[0]->color.y * d1  +
-					modelTri->vertices[1]->color.y * d2  +
-					modelTri->vertices[2]->color.y * d0),
-					real2scalar(
-					modelTri->vertices[0]->color.z * d1 +
-					modelTri->vertices[1]->color.z * d2 +
-					modelTri->vertices[2]->color.z * d0));
+			t = red; ((long*)out) [0] = t;
+			t = grn; ((short*)out)[1] = t;
+			t = blu; ((char*)out) [3] = t;
 		}
 		// update with delta in dx direction
 		if((d0 += t->dx[0])<0) break;
 		if((d1 += t->dx[1])<0) break;
 		if((d2 += t->dx[2])<0) break;
 		z += t->dz;	++out; 
+		red += t->d_r; grn += t->d_g; blu += t->d_b;
 	}
 //	} while(++x<=t->xmax);
 }
@@ -723,7 +725,25 @@ void _REG draw_triangle_5(_A0(tri *t), _A1(triangle *modelTri)) {
 	colour col = modelTri->vertices[0]->col;
 	int monochrome = col==modelTri->vertices[1]->col && col==modelTri->vertices[2]->col;
 	//if(monochrome) col = ~col;
-	
+
+	if(!monochrome) {
+		t->red[0] = modelTri->vertices[2]->color.x*0xFF0000;
+		t->red[1] = modelTri->vertices[0]->color.x*0xFF0000;
+		t->red[2] = modelTri->vertices[1]->color.x*0xFF0000;
+
+		t->grn[0] = modelTri->vertices[2]->color.y*0xFF00;
+		t->grn[1] = modelTri->vertices[0]->color.y*0xFF00;
+		t->grn[2] = modelTri->vertices[1]->color.y*0xFF00;
+			
+		t->blu[0] = modelTri->vertices[2]->color.z*0xFF;
+		t->blu[1] = modelTri->vertices[0]->color.z*0xFF;
+		t->blu[2] = modelTri->vertices[1]->color.z*0xFF;
+
+		t->d_r = t->red[0]*t->dx[0] + t->red[1]*t->dx[1] + t->red[2]*t->dx[2];
+		t->d_g = t->grn[0]*t->dx[0] + t->grn[1]*t->dx[1] + t->grn[2]*t->dx[2];
+		t->d_b = t->blu[0]*t->dx[0] + t->blu[1]*t->dx[1] + t->blu[2]*t->dx[2];
+	}
+
 	if(t->ymax - t->ymin<=4) {
 		int i = t->ymin;
 		while(i<=t->ymax) t->extra.xmin[i++] = t->xmin;
@@ -754,7 +774,7 @@ void _REG draw_triangle_5(_A0(tri *t), _A1(triangle *modelTri)) {
 			if(monochrome)	
 				draw_span_mono(t,col);
 			else 
-				draw_span(t,modelTri);
+				draw_span(t);
 		}
 	}
 }

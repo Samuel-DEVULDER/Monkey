@@ -692,11 +692,17 @@ TRI_pbuf	rs.l	1
 TRI_pxmin	rs.l	1
 TRI_pxmax	rs.l	1
 TRI_x		rs.l	1
+TRI_dx		equ		TRI_nx
 TRI_dz		rs.s	1
 TRI_zb		rs.l	1
 TRI_out		rs.l	1
 TRI_d		rs.s	3
-TRI_dx		equ		TRI_nx
+TRI_red		rs.s	3
+TRI_grn		rs.s	3
+TRI_blu		rs.s	3
+TRI_dr		rs.s	1
+TRI_dg		rs.s	1
+TRI_db		rs.s	1
 
 			rsreset
 VTX_nxt		rs.l	1
@@ -825,11 +831,10 @@ _draw_span_mono
 _draw_span
  ifeq REGPARM
 		move.l	4(sp),a0
-		move.l	8(sp),a1
  endc
 @draw_span
-		movem.l	d2-d4/a2-a4,-(sp)
-		fmovem	fp2-fp6,-(sp)
+		movem.l	d2-d7/a2,-(sp)
+		fmovem	fp2-fp7,-(sp)
 		
 		movem.l	TRI_d+0*4(a0),d0-d2
 		
@@ -846,63 +851,49 @@ _draw_span
 		fadd	fp2,fp3
 		fmove.s	d2,fp2
 		
-		movem.l	TRI_dx+0*4(a0),d0-d2		
-		movem.l	TRI_dz(a0),d3/a2/a3
-*		move.l	TRI_zb(a0),a2
-*		move.l	TRI_out(a0),a3
+		fmove.s	TRI_red+0*4(A0),fp5
+		fmove.s	TRI_red+1*4(A0),fp6
+		fmove.s	TRI_red+2*4(A0),fp4
+		fmul	fp0,fp5
+		fmul	fp1,fp6
+		fmul	fp2,fp4
+		fadd	fp5,fp6
+		fmove.s	TRI_grn+0*4(A0),fp5
+		fadd	fp6,fp4
+		fmove.s	TRI_grn+1*4(A0),fp6
+		fmove.s	TRI_grn+2*4(A0),fp7
+		fmul	fp0,fp5
+		fmul	fp1,fp6
+		fmul	fp2,fp7
+		fadd	fp6,fp5
+		fmove.s	TRI_blu+0*4(A0),fp6
+		fadd	fp7,fp5
+		fmove.s	TRI_blu+1*4(A0),fp7
+		fmove.s	fp5,d7
+		fmove.s	TRI_blu+2*4(A0),fp5
+		fmul	fp0,fp6
+		fmul	fp2,fp5
+		fmul	fp1,fp7
+		fadd	fp5,fp6
+		fmove.s	d7,fp5
+		fadd	fp7,fp6
 		
+		movem.l	TRI_dz(a0),d3/a1/a2
+*		move.l	TRI_zb(a0),a1
+*		move.l	TRI_out(a0),a2		
+
+		movem.l	TRI_dx+0*4(a0),d0-d2
+		movem.l	TRI_dr(A0),d4-d6	
 
 .1
-		fcmp.s	(a2)+,fp3
+		fcmp.s	(a1)+,fp3
 		fble.b	.2
-		fmove.s	fp3,-4(a2)
-	ifne 1
-		move.l	TRIANGLE_VT+0*4(A1),A4
-		fmove.s	VTX_color_y(A4),fp4
-		fmul	fp1,fp4
-		move.l	TRIANGLE_VT+1*4(A1),A4
-		fmove.s	VTX_color_y(A4),fp5
-		fmul	fp2,fp5
-		move.l	TRIANGLE_VT+2*4(A1),A4
-		fmove.s	VTX_color_y(A4),fp6
-		fmul	fp0,fp6
-		fadd	fp4,fp5
-		
-		move.l	TRIANGLE_VT+0*4(A1),A4
-		fmove.s	VTX_color_x(A4),fp4
-		fmul	fp1,fp4
-		fadd	fp5,fp6
-		move.l	TRIANGLE_VT+1*4(A1),A4
-		fmove.s	VTX_color_x(A4),fp5
-		fmul.l	#$FF00,fp6
-		fmul	fp2,fp5
-		move.l	TRIANGLE_VT+2*4(A1),A4
-		fmove.l	fp6,(a3)
-		fmove.s	VTX_color_x(A4),fp6
-		fmul	fp0,fp6
-		fadd	fp4,fp5
-		
-		move.l	TRIANGLE_VT+0*4(A1),A4
-		fmove.s	VTX_color_z(A4),fp4
-		fmul	fp1,fp4
-		fadd	fp5,fp6
-		move.l	TRIANGLE_VT+1*4(A1),A4
-		fmove.s	VTX_color_z(A4),fp5
-		fmul	fp2,fp5
-		fmul.w	#$00ff,fp6
-		move.l	TRIANGLE_VT+2*4(A1),A4
-		fmove.w	fp6,(a3)
-		fmove.s	VTX_color_z(A4),fp6
-		fmul	fp0,fp6
-		fadd	fp4,fp5
-		fadd	fp5,fp6
-		fmul.w	#255,fp6
-		fmove.w	fp6,d4
-		move.b	d4,3(a3)
-	else
-		moveq	#-1,d4
-		move.l	d4,(a3)
-	endc
+		fmove.s	fp3,-4(a1)
+		fmove.l	fp5,d7
+		fmove.l	fp4,(a2)
+		move.w	d7,2(a2)
+		fmove.l	fp6,d7
+		move.b	d7,3(a2)
 .2
 		fadd.s	d0,fp0
 		fblt.b	.9
@@ -910,11 +901,16 @@ _draw_span
 		fblt.b	.9
 		fadd.s	d2,fp2
 		fblt.b	.9
+		
 		fadd.s	d3,fp3
-		addq.l	#4,a3
+		addq.l	#4,a2
+		
+		fadd.s	d4,fp4
+		fadd.s	d5,fp5
+		fadd.s	d6,fp6
 		bra		.1
 		
 .9
-		fmovem	(sp)+,fp2-fp6
-		movem.l	(sp)+,d2-d4/a2-a4
+		fmovem	(sp)+,fp2-fp7
+		movem.l	(sp)+,d2-d7/a2
 		rts

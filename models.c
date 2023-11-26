@@ -157,16 +157,10 @@ void shade(model* m, float lx, float ly, float lz, int component) {
 		float Lz = lz - v->point.z;
 
 		float ilenL = scalarInvSqrt(Lx*Lx + Ly*Ly + Lz*Lz);
-		float NdotL;
-
-		Lx *= ilenL;
-		Ly *= ilenL;
-		Lz *= ilenL;
-
-		NdotL =
+		float NdotL = (
 			v->proj_normal.x * Lx +
 			v->proj_normal.y * Ly +
-			v->proj_normal.z * Lz;
+			v->proj_normal.z * Lz ) *ilenL;
 
 		if (NdotL < 0.0f) NdotL = 0.0f;
 			
