@@ -184,7 +184,6 @@ static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 	}
 
 	dx = (t->x[j]-x)/k;
-
 	if(k<0) {
 		do {
 			plot(t,y,x);
@@ -209,8 +208,8 @@ _REG void plot_triangle(_A0(tri *t))  {
 _REG void crop_triangle(_A0(tri *t))  {
 	int y, m = t->width-1;
 	for(y=t->ymin; y<=t->ymax; ++y) {
-		int min =  ceil(t->bounds[y].min);
-		int max = floor(t->bounds[y].max);
+		int min =  ceil(t->bounds[y].min-.001);
+		int max = floor(t->bounds[y].max+.001);
 		//printf("%d %d\n", min, max);
 		if(min<0)    min = 0;
 		if(max>m)    max = m;
@@ -234,8 +233,7 @@ _REG void crop_triangle(_A0(tri *t))  {
 	// t->ymax = y;
 }
 
-#if M68K==1
-#define find_span 		x_find_span
+#if M68K==0
 #define draw_span_mono	x_draw_span_mono
 #define draw_span		x_draw_span
 
@@ -292,6 +290,9 @@ void _REG draw_span(_A0(tri *t), _A1(struct bounds *B)) {
 		++pb; w += t->wx; r += t->rx; g += t->gx; b += t->bx;
 	}}
 }
+#else
+extern void _REG draw_span_mono(_A0(tri *t), _A1(struct bounds *B));
+extern void _REG draw_span(_A0(tri *t), _A1(struct bounds *B));	
 #endif
 
 void _REG draw_triangle(_A0(tri *t)) {

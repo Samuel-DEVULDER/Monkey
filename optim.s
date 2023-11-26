@@ -715,45 +715,41 @@ _scalarTan:
 		rts
 	endc		; M68K
  
-* 	struct span {
-*		int x, xmax;		
-*		scalar dz;
-*		scalar *zb;
-*		colour *out;
-*		real   d[3];
-*#ifndef dx
-*		real   dx[3];
-*#endif
-*	} span;
-
 			rsreset
-TRI_sx		rs.s	3
-TRI_sy		rs.s	3
-TRI_nx		rs.s	3
-TRI_ny		rs.s	3
-TRI_c		rs.s	3
-TRI_xmin	rs.l	1
-TRI_xmax	rs.l	1
-TRI_ymin	rs.l	1
-TRI_ymax	rs.l	1
 TRI_width	rs.w	1
 TRI_height	rs.w	1
 TRI_zbuf	rs.l	1
 TRI_pbuf	rs.l	1
-TRI_pxmin	rs.l	1
-TRI_pxmax	rs.l	1
-TRI_x		rs.l	1
-TRI_dx		equ		TRI_nx
-TRI_dz		rs.s	1
-TRI_zb		rs.l	1
-TRI_out		rs.l	1
-TRI_d		rs.s	3
-TRI_red		rs.s	3
-TRI_grn		rs.s	3
-TRI_blu		rs.s	3
-TRI_dr		rs.s	1
-TRI_dg		rs.s	1
-TRI_db		rs.s	1
+
+TRI_x		rs.l	3
+TRI_y		rs.l	3
+TRI_w		rs.s	3
+TRI_r		rs.s	3
+TRI_g		rs.s	3
+TRI_b		rs.s	3
+
+TRI_d		rs.s	2
+
+TRI_dx		rs.s	2
+TRI_dy		rs.s	2
+TRI_wx		rs.s	1
+TRI_rx		rs.s	1
+TRI_gx		rs.s	1
+TRI_bx		rs.s	1
+
+TRI_col		rs.l	1
+TRI_mono	rs.l	1
+
+TRI_xmin	rs.l	1
+TRI_xmax	rs.l	1
+TRI_ymin	rs.l	1
+TRI_ymax	rs.l	1
+
+TRI_bounds	rs.l	1
+
+			rsreset
+BND_min		rs.s	1
+BND_max		rs.s	1
 
 			rsreset
 VTX_nxt		rs.l	1
@@ -770,198 +766,149 @@ VTX_col		rs.l	1
 TRIANGLE_ID	rs.l	1
 TRIANGLE_VT	rs.l	3
 
-		xdef _find_span
-_find_span
- ifeq REGPARM
-		move.l	4(sp),a0
- endc
-@find_span
-		movem.l	d2-d4,-(sp)
-		fmove.d	fp2,-(sp)
-		
-		moveq	#0,d4
-		
-		movem.l	TRI_d(a0),d0-d2
-		fmove.s	d0,fp0
-		fmove.s	d1,fp1
-		or.l	d1,d0
-		fmove.s	d2,fp2
-		or.l	d2,d0
-		bpl.s	.8
-		
-		movem.l	TRI_dx(a0),d0-d2
-
-		move.l	TRI_xmax(a0),d3
-		sub.l	TRI_x(a0),d3
-		bra.s	.3		
-.1
-		fadd.s	d1,fp1
-.2
-		fadd.s	d2,fp2
-.3
-		addq.l	#1,d4 
-		cmp.l	d3,d4
-		bge.b	.4
-
-		fadd.s	d0,fp0
-		fblt.b	.1
-		fadd.s	d1,fp1
-		fblt.b	.2
-		fadd.s	d2,fp2
-		fblt.b	.3
-		
-		fmove.s	fp0,TRI_d+0*4(a0)
-		fmove.s	fp1,TRI_d+1*4(a0)
-		fmove.s	fp2,TRI_d+2*4(a0)
-		
-		add.l	d4,TRI_x(A0)
-		lsl.l	#2,d4
-		add.l	d4,TRI_zb(A0)
-		add.l	d4,TRI_out(A0)
-.8
-		moveq	#1,d0
-.9
-		fmove.d	(sp)+,fp2
-		movem.l	(sp)+,d2-d4
-		rts
-.4
-		moveq	#0,d0
-		bra.s	.9
 		
 		xdef _draw_span_mono
 _draw_span_mono
  ifeq REGPARM
 		move.l	4(sp),a0
-		move.l	8(sp),d0
+		move.l	8(sp),a1
  endc
 @draw_span_mono
-		movem.l	d2-d4/a2,-(sp)
-		fmovem	fp2-fp3,-(sp)
+		fmove.s	(a1)+,fp0
+		fmove.s	(a1),fp1
+		fmove.l	fp0,d0
+		fmove.l	fp1,d1
+		sub.l	d0,d1
+		bge.b	.0
+		rts
+.0
+		move.l	d2,-(sp)
+		fmove	fp2,-(sp)
 		
-		movem.l	TRI_d+0*4(a0),d1-d3
+		fmove.s	TRI_dx+0*4(a0),fp0
+		fmove.s	TRI_dx+1*4(a0),fp1
+		fmul.l	d0,fp0
+		fmul.l	d0,fp1
+		fmove.b	#1,fp2
+		fadd.s	TRI_d+0*4(a0),fp0
+		fadd.s	TRI_d+1*4(a0),fp1
+		move.l	TRI_col(a0),d2
+		fsub	fp0,fp2
 		
-		fmove.s	TRI_c+0*4(a0),fp0
-		fmove.s	TRI_c+1*4(a0),fp2
-		fmove.s	TRI_c+2*4(a0),fp3
-		fmul.s	d1,fp0
-		fmul.s	d2,fp2
-		fmul.s	d3,fp3
-		fmove.s	d1,fp1
-		fadd	fp2,fp0
-		fmove.s	d2,fp2
-		fadd	fp3,fp0		
-		fmove.s	d3,fp3
-		
-		movem.l	TRI_dx+0*4(a0),d1-d3
-		movem.l	TRI_dz(a0),d4/a1/a2
-*		move.l	TRI_zb(a0),a1
-*		move.l	TRI_out(a0),a2
-		
+		fmul.s	TRI_w+0*4(a0),fp0
+		move.l	TRI_zbuf(a0),a1
+		fsub	fp1,fp2
+		fmul.s	TRI_w+1*4(a0),fp1
+		fmul.s	TRI_w+2*4(a0),fp2
+		lea		(a1,d0.l*4),a1
+		fadd	fp0,fp1
+		fmove.s	TRI_wx(a0),fp0
+		move.l	TRI_pbuf(a0),a0
+		fadd	fp1,fp2
+		lea		(a0,d0.l*4),a0
+
 .1
-		fcmp.s	(a1)+,fp0
+		fcmp.s	(a1)+,fp2
 		fble.b	.2
-		fmove.s	fp0,-4(a1)
-		move.l	d0,(a2)
+		fmove.s	fp2,-4(a1)
+		move.l	d2,(a0)
 .2
-		fadd.s	d1,fp1
-		fblt.b	.9
-		fadd.s	d2,fp2
-		fblt.b	.9
-		fadd.s	d3,fp3
-		fblt.b	.9
-		fadd.s	d4,fp0
-		addq.l	#4,a2
-		bra		.1
+		addq.l	#4,a0
+		fadd	fp0,fp2
+		dbra	d1,.1
 		
-.9
-		fmovem	(sp)+,fp2-fp3
-		movem.l	(sp)+,d2-d4/a2
+		fmove	(sp)+,fp2
+		move.l	(sp)+,d2
 		rts
 
 		xdef _draw_span
 _draw_span
  ifeq REGPARM
 		move.l	4(sp),a0
+		move.l	8(sp),a1
  endc
 @draw_span
-		movem.l	d2-d7/a2,-(sp)
+		fmove.s	(a1)+,fp0
+		fmove.s	(a1),fp1
+		fmove.l	fp0,d0
+		fmove.l	fp1,d1
+		sub.l	d0,d1
+		bge.b	.0
+		rts
+.0
+		movem.l	d2-d5,-(sp)
 		fmovem	fp2-fp7,-(sp)
 		
-		movem.l	TRI_d+0*4(a0),d0-d2
+		fmove.s	TRI_dx+0*4(a0),fp0
+		fmove.s	TRI_dx+1*4(a0),fp1
+		fmul.l	d0,fp0
+		fmul.l	d0,fp1
+		fmove.b	#1,fp2
+		fadd.s	TRI_d+0*4(a0),fp0
+		fadd.s	TRI_d+1*4(a0),fp1
 		
-		fmove.s	TRI_c+0*4(a0),fp3
-		fmove.s	TRI_c+1*4(a0),fp1
-		fmove.s	TRI_c+2*4(a0),fp2
-		fmul.s	d0,fp3
-		fmul.s	d1,fp1
-		fmul.s	d2,fp2
+		fmove.s	TRI_r+0*4(a0),fp3
+		fmove.s	TRI_r+1*4(a0),fp4
+		fmove.s	TRI_r+2*4(a0),fp5
+		fsub	fp0,fp2
+		fmul	fp0,fp3
+		fsub	fp1,fp2
+		fmul	fp1,fp4
+		fmul	fp2,fp5
+		fadd	fp4,fp3
 		
-		fmove.s	d0,fp0
-		fadd	fp1,fp3
-		fmove.s	d1,fp1
-		fadd	fp2,fp3
-		fmove.s	d2,fp2
+		fmove.s	TRI_g+0*4(a0),fp4
+		fadd	fp5,fp3				; fp3 = r
+		fmove.s	TRI_g+1*4(a0),fp5
+		fmove.s	TRI_g+2*4(a0),fp6
+		fmul	fp0,fp4
+		fmul	fp1,fp5
+		fmul	fp2,fp6
+		fadd	fp5,fp4
 		
-		fmove.s	TRI_red+0*4(A0),fp5
-		fmove.s	TRI_red+1*4(A0),fp6
-		fmove.s	TRI_red+2*4(A0),fp4
-		fmul	fp0,fp5
-		fmul	fp1,fp6
-		fmul	fp2,fp4
-		fadd	fp5,fp6
-		fmove.s	TRI_grn+0*4(A0),fp5
-		fadd	fp6,fp4
-		fmove.s	TRI_grn+1*4(A0),fp6
-		fmove.s	TRI_grn+2*4(A0),fp7
+		fmove.s	TRI_b+0*4(a0),fp5
+		fadd	fp6,fp4				; fp4 = g		
+		fmove.s	TRI_b+1*4(a0),fp6
+		fmove.s	TRI_b+2*4(a0),fp7
 		fmul	fp0,fp5
 		fmul	fp1,fp6
 		fmul	fp2,fp7
 		fadd	fp6,fp5
-		fmove.s	TRI_blu+0*4(A0),fp6
-		fadd	fp7,fp5
-		fmove.s	TRI_blu+1*4(A0),fp7
-		fmove.s	fp5,d7
-		fmove.s	TRI_blu+2*4(A0),fp5
-		fmul	fp0,fp6
-		fmul	fp2,fp5
-		fmul	fp1,fp7
-		fadd	fp5,fp6
-		fmove.s	d7,fp5
-		fadd	fp7,fp6
 		
-		movem.l	TRI_dz(a0),d3/a1/a2
-*		move.l	TRI_zb(a0),a1
-*		move.l	TRI_out(a0),a2		
-
-		movem.l	TRI_dx+0*4(a0),d0-d2
-		movem.l	TRI_dr(A0),d4-d6	
-
+		fmul.s	TRI_w+0*4(a0),fp0
+		fadd	fp7,fp5				; fp5 = b
+		fmul.s	TRI_w+1*4(a0),fp1
+		fmul.s	TRI_w+2*4(a0),fp2
+		fadd	fp0,fp1
+		movem.l	TRI_wx(a0),d2/d3/d4/d5
+		fadd	fp1,fp2				; fp2 = w
+		
+		move.l	TRI_zbuf(a0),a1
+		move.l	TRI_pbuf(a0),a0
+		lea		(a1,d0.l*4),a1
+		lea		(a0,d0.l*4),a0
+		
 .1
-		fcmp.s	(a1)+,fp3
+		fcmp.s	(a1)+,fp2
 		fble.b	.2
-		fmove.s	fp3,-4(a1)
-		fmove.l	fp5,d7
-		fmove.l	fp4,(a2)
-		move.w	d7,2(a2)
-		fmove.l	fp6,d7
-		move.b	d7,3(a2)
+		
+		fmove.l	fp4,d0
+		fmove.l	fp3,(a0)
+		move.w	d0,2(a0)
+		fmove.l	fp5,d0
+		fmove.s	fp2,-4(a1)
+		move.b	d0,3(a0)
 .2
-		fadd.s	d0,fp0
-		fblt.b	.9
-		fadd.s	d1,fp1
-		fblt.b	.9
+		addq.l	#4,a0
 		fadd.s	d2,fp2
-		fblt.b	.9
-		
 		fadd.s	d3,fp3
-		addq.l	#4,a2
-		
 		fadd.s	d4,fp4
 		fadd.s	d5,fp5
-		fadd.s	d6,fp6
-		bra		.1
 		
-.9
+		dbra	d1,.1
+		
 		fmovem	(sp)+,fp2-fp7
-		movem.l	(sp)+,d2-d7/a2
+		movem.l	(sp)+,d2-d5
 		rts
+.x
+	dc.b	"%d %d\n",0
