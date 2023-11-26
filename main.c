@@ -456,7 +456,8 @@ int main(int argc, char **argv) {
 	if(!strcmp(redrat, modelName)) {
 		modelName = redrat;
 		//makeSquareMesh(&globalModel,51,51);
-		makeRedratMesh(&globalModel, 20, 20);
+		//makeRedratMesh(&globalModel, 20, 20);
+		makeRedratMesh(&globalModel, 20, 16*3);
 		zDist = 4;
 		angleX = M_PI/6;
 	} else if(!makeModelFromMeshFile(&globalModel, modelName)) {

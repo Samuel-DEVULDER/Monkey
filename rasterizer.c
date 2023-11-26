@@ -45,6 +45,7 @@ typedef struct {
 	struct bounds {
 		scalar min, max;
 	} *bounds;
+	int bounds_size;
 } tri;
 
 static _REG int projection(_A0(tri *t), _A1(const triangle* modelTri)) {
@@ -143,8 +144,12 @@ int _REG prepare(_A0(tri *t), _A1(const triangle* modelTri)) {
 	color(t, modelTri);
 	
 	// setup bounds info
+	if(t->bounds && t->bounds_size!=t->height) {
+		free(t->bounds);
+		t->bounds = NULL;
+	}
 	if(!t->bounds) {
-		int i = t->height, j = t->width, k=-1;
+		int i = t->bounds_size=t->height, j = t->width, k=-1;
 		struct bounds *b;
 		
 		t->bounds = b = malloc(i*sizeof(*b));
@@ -164,13 +169,13 @@ static _REG void plot(_A0(tri *t), _D0(int y), _FP0(double x)) {
 		struct bounds *p = &t->bounds[y];
 		if(x<p->min) p->min = x;
 		if(x>p->max) p->max = x;
-		if(0) {
-			scalar d0,d1,d2;
-			d0 = t->d[0] + (y-t->ymin)*t->dy[0] + x*t->dx[0];
-			d1 = t->d[1] + (y-t->ymin)*t->dy[1] + x*t->dx[1];
-			d2 = 1 - d1 - d0;
-			printf("line=%f %f %f\n", d0, d1, d2);			
-		}
+		// if(0) {
+			// scalar d0,d1,d2;
+			// d0 = t->d[0] + (y-t->ymin)*t->dy[0] + x*t->dx[0];
+			// d1 = t->d[1] + (y-t->ymin)*t->dy[1] + x*t->dx[1];
+			// d2 = 1 - d1 - d0;
+			// printf("line=%f %f %f\n", d0, d1, d2);			
+		// }
 		// t->pbuf[(t->height-1 - y)*t->width + x] = -1;
 	}
 }
@@ -196,6 +201,8 @@ static _REG void plot_line_x(_A0(tri *t), _D0(int i), _D1(int j)) {
 	plot(t,y,x);
 }
 
+#if M68K==0
+#define plot_line plot_line_xx
 _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 	double x = t->x[i], dx;
 	int y = t->y[i], k = t->y[j] - y, dy;
@@ -216,8 +223,7 @@ _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 	dx = (t->x[j]-x)/k; dy = 1;
 	
 	if(k<0) {k=-k; dx=-dx; dy=-dy;}
-	if(y<0) {k += y; x -= y*dx; p = &t->bounds[y=0];}
-	if(k<0) return;
+	if(y<0) {k += y; x -= y*dx; p = &t->bounds[0];if(k<0) return;}
 	if(k>=t->height-1) k=t->height-1;
 	
 	do {
@@ -228,6 +234,9 @@ _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 	if(x<p->min) p->min = x;
 	if(x>p->max) p->max = x;
 }
+#else
+extern _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j));
+#endif
 
 _REG void plot_triangle(_A0(tri *t))  {
 	plot_line(t, 0, 1);
@@ -236,7 +245,10 @@ _REG void plot_triangle(_A0(tri *t))  {
 }
 
 #define FLOOR(x) ((int)(x))
-#define CEIL(x)	 ((int)((x)+.9999999))
+#define CEIL(x)	 ((int)((x)+.9999999999))
+
+// #define FLOOR(x)	floor(x)
+// #define CEIL(x)		ceil(x)
 
 _REG void crop_triangle(_A0(tri *t))  {
 	short k = t->ymax - t->ymin;
@@ -317,6 +329,7 @@ extern void _REG draw_span(_A0(tri *t), _A1(struct bounds *B));
 #endif
 
 #if M68K==0
+#define draw_triangle draw_triangle_x
 void _REG draw_triangle(_A0(tri *t)) {
 	int w = t->width;
 	int idx = (unsigned short)(t->height-1 - t->ymin) * (unsigned short)w;

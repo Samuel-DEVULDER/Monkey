@@ -29,9 +29,9 @@ static void build_list(model *mdl, struct aa_node *nd) {
 
 static const vertex *add(aa_tree *tree, float u, float v, float w, int flags) {
 	param_vertex *p = alloc(sizeof(*p));
-	scalar sqrt2 = 1.4142135623730950488016887242097f;
-	scalar phi = -2*scalarPI*u;
-	scalar x = scalarCos(phi)*v*sqrt2, y = scalarSin(phi)*v*sqrt2;
+	double sqrt2 = 1.4142135623730950488016887242097f;
+	double phi = -2*scalarPI*u;
+	scalar x = cos(phi)*v*sqrt2, y = sin(phi)*v*sqrt2;
 	const param_vertex *p2;
 	
 	scalar s=scalarAbs(x);

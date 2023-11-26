@@ -672,6 +672,7 @@ _scalarSin:
 @scalarSin:
 		fmul.s  #1303.7972938088065906186957895476,fp0
 		lea		_costab,a0		; fp1 preserved
+		fadd.s	#0.5,fp0
 		fmove.l fp0,d0
 		sub.w	#2048,d0
 		and.w	#8191,d0
@@ -689,6 +690,7 @@ _scalarCos:
 *		fabs	fp0
 		fmul.s  #1303.7972938088065906186957895476,fp0
 		lea		_costab,a0		; fp1 preserved
+		fadd.s	#0.5,fp0
 		fmove.l fp0,d0
 		and.w	#8191,d0
 		fmove.s (a0,d0.w*4),fp0
@@ -704,6 +706,7 @@ _scalarTan:
 @scalarTan:
 		fmul.s  #1303.7972938088065906186957895476,fp0
 		lea	_costab,a0		; fp1 preserved
+		fadd.s	#0.5,fp0
 		fmove.l fp0,d0
 		sub.w	#2048,d0
 		and.w	#8191,d0
@@ -746,6 +749,7 @@ TRI_ymin	rs.l	1
 TRI_ymax	rs.l	1
 
 TRI_bounds	rs.l	1
+TRI_bounds_	rs.l	1
 
 			rsreset
 BND_min		rs.s	1
@@ -837,7 +841,7 @@ _draw_span
 		bge.b	.0
 		rts
 .0
-		movem.l	d2-d5,-(sp)
+		movem.l	d2-d7,-(sp)
 		fmovem	fp2-fp7,-(sp)
 		
 		fmove.s	TRI_dx+0*4(a0),fp0
@@ -894,12 +898,13 @@ _draw_span
 		fcmp.s	(a1)+,fp2
 		fble.b	.2
 		
-		fmove.l	fp4,d0
-		fmove.l	fp3,(a0)
-		move.w	d0,2(a0)
-		fmove.l	fp5,d0
+		fmove.l	fp3,d0
+		fmove.l	fp4,d6
+		fmove.l	fp5,d7
 		fmove.s	fp2,-4(a1)
-		move.b	d0,3(a0)
+		move.w	d6,d0
+		move.b	d7,d0
+		move.l	d0,(a0)
 .2
 		addq.l	#4,a0
 		fadd.s	d2,fp2
@@ -910,7 +915,7 @@ _draw_span
 		dbra	d1,.1
 		
 		fmovem	(sp)+,fp2-fp7
-		movem.l	(sp)+,d2-d5
+		movem.l	(sp)+,d2-d7
 		rts
 		
 		xdef _draw_triangle
@@ -972,9 +977,6 @@ _draw_triangle
 		move.l	a3,TRI_zbuf(a2)
 		move.l	a4,TRI_pbuf(a2)
 		jsr		(a6)
-*		fmove.s	TRI_d+0*4(a2),fp2
-*		fmove.s	TRI_d+1*4(a2),fp3
-		
 		fadd.s	d2,fp2			; t->d[0]+=
 		fadd.s	d3,fp3			; t->d[1]+=
 		move.l	d6,(a5)+		; b->min=w-1
@@ -989,3 +991,59 @@ _draw_triangle
 		fmovem	(sp)+,fp2/fp3
 		movem.l	(sp)+,d2-d6/a2-a6
 		rts
+
+		xdef _plot_line
+_plot_line
+ ifeq REGPARM
+		move.l	4(sp),a0
+		move.l	8(sp),d0
+		move.l	12(sp),d1
+ endc
+@plot_line
+		move.l	d2,-(sp)
+		fmove.l	TRI_x(a0,d0.l*4),fp0	; fp0=x
+		fmove.l	TRI_x(a0,d1.l*4),fp1
+		move.l	TRI_y(a0,d0.l*4),d0		; d0=y
+		move.l	TRI_y(a0,d1.l*4),d1
+		fsub	fp0,fp1
+		move.l	TRI_bounds(a0),a1
+		moveq	#8,d2					; d2=dy
+		lea		(a1,d0.l*8),a1			; a1=bounds[y]
+		sub.l	d0,d1					; d1=k=y[j]-y[i]
+		bge.b	.1
+		neg.l	d1
+		neg.l	d2
+.1
+		fdiv.l	d1,fp1					; fp1=dx
+		
+		tst.l	d0						; y<0?
+		bge.b	.2
+		add.l	d0,d1
+		bmi.b	.9
+		move.l	TRI_bounds(a0),a1
+		fmove.x	fp1,-(sp)
+		fmul.l	d0,fp1
+		fsub	fp1,fp0
+		fmove.x	(sp)+,fp1
+.2
+		cmp.l	TRI_height(a0),d1
+		blt.s	.3
+		move.l	TRI_height(a0),d1
+		subq.l	#1,d1
+.3
+		fcmp.s	(a1),fp0
+		fbge.b	.4
+		fmove.s	fp0,(a1)
+.4
+		fcmp.s	4(a1),fp0
+		fble.s	.5
+		fmove.s	fp0,4(a1)
+.5
+		fadd	fp1,fp0
+		add.l	d2,a1
+		dbra	d1,.3
+		
+.9
+		move.l	(sp)+,d2
+		rts
+		
