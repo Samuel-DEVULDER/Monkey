@@ -991,6 +991,25 @@ _draw_triangle
 		movem.l	(sp)+,d2-d6/a2-a6
 		rts
 
+		xdef _plot_triangle
+_plot_triangle
+ ifeq REGPARM
+		move.l	4(sp),a0
+ endc
+@plot_triangle
+		move.l	a0,-(sp)
+		moveq	#0,d0
+		moveq	#1,d1
+		bsr.s	@plot_line
+		move.l	(sp),a0
+		moveq	#0,d0
+		moveq	#2,d1
+		bsr.s	@plot_line
+		move.l	(sp)+,a0
+		moveq	#1,d0
+		moveq	#2,d1
+		bra.s	@plot_line
+
 		xdef _plot_line
 _plot_line
  ifeq REGPARM
@@ -1045,4 +1064,36 @@ _plot_line
 .9
 		move.l	(sp)+,d2
 		rts
-		
+
+		xdef _crop_triangle
+_crop_triangle
+ ifeq REGPARM
+		move.l	4(sp),a0
+ endc
+@crop_triangle
+		fmove.l	TRI_width(a0),fp0
+		move.l	TRI_ymin(a0),d0
+		move.l	TRI_ymax(a0),d1
+		fsub.w	#1,fp0
+		sub.l	d0,d1
+		move.l	TRI_bounds(a0),a0
+		lea		(a0,d0.l*8),a0
+		fmove.s	fp0,d0
+.1
+		fmove.s	(A0),fp0
+		fmove.s	4(A0),fp1
+		fadd.s	#0.999,fp0
+		fadd.s	#0.001,fp1
+		fintrz	fp0
+		fbge.s	.2
+		fmove.w	#0,fp0
+.2
+		fintrz	fp1
+		fcmp.s	d0,fp1
+		fble.s	.3
+		fmove.s	d0,fp1
+.3
+		fmove.s	fp0,(A0)+
+		fmove.s	fp1,(A0)+
+		dbra	d1,.1
+		rts

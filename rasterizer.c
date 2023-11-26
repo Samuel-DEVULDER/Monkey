@@ -259,11 +259,16 @@ _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 extern _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j));
 #endif
 
+#if M68K==0
+#define plot_triangle plot_triangle_xx
 _REG void plot_triangle(_A0(tri *t))  {
 	plot_line(t, 0, 1);
 	plot_line(t, 1, 2);
 	plot_line(t, 2, 0);
 }
+#else
+extern _REG void plot_triangle(_A0(tri *t));
+#endif
 
 #define FLOOR(x) ((int)(x))
 #define CEIL(x)	 ((int)((x)+.9999999999))
@@ -271,6 +276,7 @@ _REG void plot_triangle(_A0(tri *t))  {
 // #define FLOOR(x)	floor(x)
 // #define CEIL(x)		ceil(x)
 
+#if M68K==0
 _REG void crop_triangle(_A0(tri *t))  {
 	short k = t->ymax - t->ymin;
 	int   m = t->width-1;
@@ -286,6 +292,9 @@ _REG void crop_triangle(_A0(tri *t))  {
 		b->max = v;
 	}
 }
+#else
+extern _REG void crop_triangle(_A0(tri *t));
+#endif
 
 #if M68K==0
 #define draw_span_mono	x_draw_span_mono
@@ -394,7 +403,7 @@ void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 	do {
 		int i = t.width*t.height; 
 		scalar *f = zbuf;
-		while(1 + --i) *f++ = FLT_MIN;
+		do *f++ = FLT_MIN; while(--i);
 	} while(0);
 
 	// The actual rasterizer
