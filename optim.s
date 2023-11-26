@@ -783,7 +783,7 @@ _draw_span_mono
 		rts
 .0
 		move.l	d2,-(sp)
-		fmove	fp2,-(sp)
+		fmove.x	fp2,-(sp)
 		
 		fmove.s	TRI_dx+0*4(a0),fp0
 		fmove.s	TRI_dx+1*4(a0),fp1
@@ -800,13 +800,14 @@ _draw_span_mono
 		fsub	fp1,fp2
 		fmul.s	TRI_w+1*4(a0),fp1
 		fmul.s	TRI_w+2*4(a0),fp2
-		lea		(a1,d0.l*4),a1
+		lsl.l	#2,d0
 		fadd	fp0,fp1
 		fmove.s	TRI_wx(a0),fp0
 		move.l	TRI_pbuf(a0),a0
 		fadd	fp1,fp2
-		lea		(a0,d0.l*4),a0
-
+		add.l	d0,a1
+		add.l	d0,a0
+		
 .1
 		fcmp.s	(a1)+,fp2
 		fble.b	.2
@@ -817,7 +818,7 @@ _draw_span_mono
 		fadd	fp0,fp2
 		dbra	d1,.1
 		
-		fmove	(sp)+,fp2
+		fmove.x	(sp)+,fp2
 		move.l	(sp)+,d2
 		rts
 
@@ -883,10 +884,11 @@ _draw_span
 		movem.l	TRI_wx(a0),d2/d3/d4/d5
 		fadd	fp1,fp2				; fp2 = w
 		
+		lsl.l	#2,d0
 		move.l	TRI_zbuf(a0),a1
 		move.l	TRI_pbuf(a0),a0
-		lea		(a1,d0.l*4),a1
-		lea		(a0,d0.l*4),a0
+		add.l	d0,a1
+		add.l	d0,a0
 		
 .1
 		fcmp.s	(a1)+,fp2
@@ -910,5 +912,80 @@ _draw_span
 		fmovem	(sp)+,fp2-fp7
 		movem.l	(sp)+,d2-d5
 		rts
-.x
-	dc.b	"%d %d\n",0
+		
+		xdef _draw_triangle
+_draw_triangle
+ ifeq REGPARM
+		move.l	4(sp),a0
+ endc
+@draw_triangle
+		movem.l	d2-d6/a2-a6,-(sp)
+		fmovem	fp2-fp3,-(sp)
+		
+		move.l	a0,a2
+		jsr		_plot_triangle
+		move.l	a2,a0
+		jsr		_crop_triangle
+
+		move.l	TRI_zbuf(a2),a3
+		move.l	TRI_pbuf(a2),a4
+		move.l	TRI_bounds(a2),a5
+
+		move.l	a4,-(sp)
+		move.l	a3,-(sp)
+		
+		move.l	TRI_width(a2),d2
+		move.l	TRI_height(a2),d3
+		move.l	TRI_ymin(a2),d0
+		move.l	TRI_ymax(a2),d4
+
+		sub.l	d0,d3
+		sub.l	d0,d4			; d4=l
+		lsl.l	#3,d0
+		mulu	d2,d3
+		lsl.l	#2,d3
+		add.l	d3,a3			; a3=zbuf
+		add.l	d3,a4			; a4=pbuf
+		add.l	d0,a5			; a5=b
+
+		move.l	d2,d5
+		move.l	d2,d6
+		lsl.l	#2,d5			; d5=w*4		
+		subq.l	#1,d6			
+		fmove.l	d6,fp2
+		fmove.s	fp2,d6			; d6=w-1
+						
+		fmove.s	TRI_d+0*4(a2),fp2
+		fmove.s	TRI_d+1*4(a2),fp3
+		move.l	TRI_dy+0*4(a2),d2
+		move.l	TRI_dy+1*4(a2),d3
+		
+		move.l	#_draw_span,a6
+		tst.l	TRI_mono(a2)
+		beq.s	.1
+		move.l	#_draw_span_mono,a6
+.1
+		sub.l	d5,a3
+		sub.l	d5,a4
+		move.l	a2,a0
+		move.l	a5,a1
+		move.l	a3,TRI_zbuf(a2)
+		move.l	a4,TRI_pbuf(a2)
+		jsr		(a6)
+*		fmove.s	TRI_d+0*4(a2),fp2
+*		fmove.s	TRI_d+1*4(a2),fp3
+		
+		fadd.s	d2,fp2			; t->d[0]+=
+		fadd.s	d3,fp3			; t->d[1]+=
+		move.l	d6,(a5)+		; b->min=w-1
+		clr.l	(a5)+			; b->max=0
+		fmove.s	fp2,TRI_d+0*4(a2)
+		fmove.s	fp3,TRI_d+1*4(a2)
+		dbra	d4,.1
+		
+		move.l	(sp)+,TRI_zbuf(a2)
+		move.l	(sp)+,TRI_pbuf(a2)
+		
+		fmovem	(sp)+,fp2/fp3
+		movem.l	(sp)+,d2-d6/a2-a6
+		rts

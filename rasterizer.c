@@ -70,6 +70,10 @@ static _REG int projection(_A0(tri *t), _A1(const triangle* modelTri)) {
 	
 	// reject if triange is out of screen
 	if(t->ymin > t->ymax || t->xmin > t->xmax) return 0;
+	
+	if(t->ymin<0)       t->ymin = 0;
+	if(t->ymax>=height) t->ymax = height-1;
+	
 	return 1;
 }
 
@@ -192,7 +196,7 @@ static _REG void plot_line_x(_A0(tri *t), _D0(int i), _D1(int j)) {
 	plot(t,y,x);
 }
 
-static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
+_REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 	double x = t->x[i], dx;
 	int y = t->y[i], k = t->y[j] - y, dy;
 	struct bounds *p = &t->bounds[y];
@@ -232,7 +236,7 @@ _REG void plot_triangle(_A0(tri *t))  {
 }
 
 #define FLOOR(x) ((int)(x))
-#define CEIL(x)	 ((int)((x)+.99999999999))
+#define CEIL(x)	 ((int)((x)+.9999999))
 
 _REG void crop_triangle(_A0(tri *t))  {
 	short k = t->ymax - t->ymin;
@@ -312,34 +316,36 @@ extern void _REG draw_span_mono(_A0(tri *t), _A1(struct bounds *B));
 extern void _REG draw_span(_A0(tri *t), _A1(struct bounds *B));	
 #endif
 
+#if M68K==0
 void _REG draw_triangle(_A0(tri *t)) {
-	int idx = (unsigned short)(t->height-1 - t->ymin) * t->width;
+	int w = t->width;
+	int idx = (unsigned short)(t->height-1 - t->ymin) * (unsigned short)w;
 	scalar *zb = t->zbuf;
 	colour *pb = t->pbuf;
 	struct bounds *b = &t->bounds[t->ymin];
-	int l = 1+t->ymax - t->ymin;
+	int l = 1 + t->ymax - t->ymin;
+	void _REG (*f)(_A0(tri *t), _A1(struct bounds *B)) = t->monochrome ? draw_span_mono : draw_span;	
 	
 	plot_triangle(t); 
 	crop_triangle(t);
 
 	t->zbuf += idx;
 	t->pbuf += idx;	
-	
 	while(1 + --l) {
 		// if(b->min <= b->max) {
-			if(t->monochrome)
-				draw_span_mono(t, b); 
-			else
-				draw_span(t, b); 			
+			(*f)(t,b);
 		// }
-		b->min = t->width-1; b->max = 0; ++b;
+		b->min = w-1; b->max = 0; ++b;
 		t->d[0] += t->dy[0]; t->d[1] += t->dy[1];
-		t->zbuf -= t->width; t->pbuf -= t->width;
+		t->zbuf -= w; t->pbuf -= w;
 	}				
 	
 	t->zbuf = zb;
 	t->pbuf = pb;
 }
+#else
+extern void _REG draw_triangle(_A0(tri *t));
+#endif
 
 void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 	static tri t;
