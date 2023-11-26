@@ -10,8 +10,8 @@
 #define SCREEN_Y(p) (((p)+1)*((scalar)(height/2)))
 
 typedef struct {
-	unsigned short width;
-	unsigned short height;
+	unsigned int width;
+	unsigned int height;
 	
 	scalar *zbuf; // actually 1/z buf
 	colour *pbuf;
@@ -47,7 +47,7 @@ typedef struct {
 	} *bounds;
 } tri;
 
-static _REG int projection(_A0(tri *t), _A1(triangle* modelTri)) {
+static _REG int projection(_A0(tri *t), _A1(const triangle* modelTri)) {
 	int i, width = t->width, height = t->height;
 	
 	// project & find min/max
@@ -69,15 +69,14 @@ static _REG int projection(_A0(tri *t), _A1(triangle* modelTri)) {
 	}
 	
 	// reject if triange is out of screen
-	if(t->ymin > t->ymax || t->xmin > t->xmax)
-		return 0;
+	if(t->ymin > t->ymax || t->xmin > t->xmax) return 0;
 	return 1;
 }
 
 static _REG int gradient(_A0(tri *t)) {
 	scalar det, a, b, c, d;
-	a = t->y[1]-t->y[2]; b = t->x[2] - t->x[1];
-	c = t->y[2]-t->y[0]; d = t->x[0] - t->x[2];
+	a = t->y[1]-t->y[2]; b = t->x[2]-t->x[1];
+	c = t->y[2]-t->y[0]; d = t->x[0]-t->x[2];
 	
 	det = a*d - b*c;
 	if(det==0) return 0; else det = 1/det;
@@ -95,7 +94,7 @@ static _REG int gradient(_A0(tri *t)) {
 	return 1;
 }
 
-static _REG void color(_A0(tri *t), _A1(triangle* modelTri)) {
+static _REG void color(_A0(tri *t), _A1(const triangle* modelTri)) {
 	// determine monochrome
 	t->col = modelTri->vertices[0]->col;
 	t->monochrome = t->col==modelTri->vertices[1]->col && 
@@ -133,7 +132,7 @@ static _REG void color(_A0(tri *t), _A1(triangle* modelTri)) {
 	}
 }
 
-int _REG prepare(_A0(tri *t), _A1(triangle* modelTri)) {
+int _REG prepare(_A0(tri *t), _A1(const triangle* modelTri)) {
 	if(!projection(t, modelTri)) return 0;
 	if(!gradient(t)) return 0;
 	
@@ -141,15 +140,15 @@ int _REG prepare(_A0(tri *t), _A1(triangle* modelTri)) {
 	
 	// setup bounds info
 	if(!t->bounds) {
-		short i = t->height;
+		int i = t->height, j = t->width, k=-1;
 		struct bounds *b;
 		
 		t->bounds = b = malloc(i*sizeof(*b));
-		while(1 + --i) {
-			b->min = t->width;
-			b->max = -1;
+		do {
+			b->min = j;
+			b->max = k;
 			++b;
-		}
+		} while(--i);
 	}
 	
 	// all done
@@ -172,9 +171,9 @@ static _REG void plot(_A0(tri *t), _D0(int y), _FP0(double x)) {
 	}
 }
 
-static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
+static _REG void plot_line_x(_A0(tri *t), _D0(int i), _D1(int j)) {
 	double x = t->x[i], dx;
-	int y = t->y[i], k = t->y[j] - y;
+	int y = t->y[i], k = t->y[j] - y, dy;
 	
 	// horiz line
 	if(k == 0) {
@@ -183,20 +182,47 @@ static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
 		return;
 	}
 
-	dx = (t->x[j]-x)/k;
-	if(k<0) {
-		do {
-			plot(t,y,x);
-			x -= dx; --y;
-		} while(++k);
+	dx = (t->x[j]-x)/k; dy = 1;
+	
+	if(k<0) {k=-k; dx=-dx; dy=-dy;}
+	do {
 		plot(t,y,x);
-	} else {
-		do {
-			plot(t,y,x);
-			x += dx; ++y;
-		} while(--k);
-		plot(t,y,x);
+		x += dx; y += dy;
+	} while(--k);
+	plot(t,y,x);
+}
+
+static _REG void plot_line(_A0(tri *t), _D0(int i), _D1(int j)) {
+	double x = t->x[i], dx;
+	int y = t->y[i], k = t->y[j] - y, dy;
+	struct bounds *p = &t->bounds[y];
+	
+	// horiz line
+	if(k == 0) {
+		if((unsigned)y < (unsigned)t->height) {
+			if(x<p->min) p->min = x;
+			if(x>p->max) p->max = x;
+			x = t->x[j];
+			if(x<p->min) p->min = x;
+			if(x>p->max) p->max = x;
+		}
+		return;
 	}
+
+	dx = (t->x[j]-x)/k; dy = 1;
+	
+	if(k<0) {k=-k; dx=-dx; dy=-dy;}
+	if(y<0) {k += y; x -= y*dx; p = &t->bounds[y=0];}
+	if(k<0) return;
+	if(k>=t->height-1) k=t->height-1;
+	
+	do {
+		if(x<p->min) p->min = x;
+		if(x>p->max) p->max = x;
+		x += dx; p += dy;
+	} while(--k>0);
+	if(x<p->min) p->min = x;
+	if(x>p->max) p->max = x;
 }
 
 _REG void plot_triangle(_A0(tri *t))  {
@@ -205,32 +231,23 @@ _REG void plot_triangle(_A0(tri *t))  {
 	plot_line(t, 2, 0);
 }
 
+#define FLOOR(x) ((int)(x))
+#define CEIL(x)	 ((int)((x)+.99999999999))
+
 _REG void crop_triangle(_A0(tri *t))  {
-	int y, m = t->width-1;
-	for(y=t->ymin; y<=t->ymax; ++y) {
-		int min =  ceil(t->bounds[y].min-.001);
-		int max = floor(t->bounds[y].max+.001);
-		//printf("%d %d\n", min, max);
-		if(min<0)    min = 0;
-		if(max>m)    max = m;
-		// if(min>max)  min = max;
-		t->bounds[y].min = min;
-		t->bounds[y].max = max;
+	short k = t->ymax - t->ymin;
+	int   m = t->width-1;
+	struct bounds *b = &t->bounds[t->ymin];
+	double v;
+	for(;--k>=-1; ++b) {
+		v = CEIL(b->min-.001);
+		if(v<0) v = 0;
+		b->min = v;
+		
+		v = FLOOR(b->max+.001);
+		if(v>m) v = m;
+		b->max = v;
 	}
-	// for(y=t->ymin; y<t->ymax; ++y) {
-		// if(t->bounds[y].min>t->bounds[y].max) {
-			// t->bounds[y].min = m;
-			// t->bounds[y].max = 0;
-		// } else break;
-	// }
-	// t->ymin = y;
-	// for(y=t->ymax; y>t->ymin; --y) {
-		// if(t->bounds[y].min>t->bounds[y].max) {
-			// t->bounds[y].min = m;
-			// t->bounds[y].max = 0;
-		// } else break;
-	// }
-	// t->ymax = y;
 }
 
 #if M68K==0
@@ -335,7 +352,7 @@ void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 
 	// The actual rasterizer
 	while(modelTrianglesLeft(m)) {
-		triangle *modelTri = modelNextTriangle(m);
+		const triangle *modelTri = modelNextTriangle(m);
 		
 		// Backface cull
 		if(

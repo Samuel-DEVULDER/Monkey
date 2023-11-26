@@ -716,8 +716,8 @@ _scalarTan:
 	endc		; M68K
  
 			rsreset
-TRI_width	rs.w	1
-TRI_height	rs.w	1
+TRI_width	rs.l	1
+TRI_height	rs.l	1
 TRI_zbuf	rs.l	1
 TRI_pbuf	rs.l	1
 
