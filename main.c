@@ -461,7 +461,7 @@ int main(int argc, char **argv) {
 		modelName = redrat;
 		//makeSquareMesh(&globalModel,51,51);
 		//makeRedratMesh(&globalModel, 20, 20);
-		makeRedratMesh(&globalModel, 20, 16*3);
+		makeRedratMesh(&globalModel, 20, 16*3/2);
 		zDist = 4;
 		angleX = M_PI/6;
 	} else if(!makeModelFromMeshFile(&globalModel, modelName)) {

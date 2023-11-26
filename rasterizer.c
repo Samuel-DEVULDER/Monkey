@@ -418,14 +418,15 @@ void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 static inline _REG void plot(_A0(tri *t), _D0(int x), _D1(int y)) {
 	if((unsigned)y < (unsigned)t->height && 
 	   (unsigned)x < (unsigned)t->width) {
-		t->pbuf[(t->height-1 - y)*t->width + x] = -1;
+		colour *p = &t->pbuf[(t->height-1 - y)*t->width + x];
+		*p = -1;
 	}
 }
 
-static inline void plotLineLow(tri *t, int x0, int y0, int x1, int y1) {
-	int dx = x1 - x0, dy = y1 - y0, yi = 1, d, x, y;
+static _REG inline void plotLineLow(_A0(tri *t), _D0(int i), _D1(int j)) {
+	int x0, x1, dx = (x1=t->x[j]) - (x0=t->x[i]), dy = t->y[j] - t->y[i], yi = 1, d, x, y;
 	if(dy<0) {dy = -dy; yi = -1;}
-	dy += dy; d = dy - dx; y = y0; dx += dx; 
+	dy += dy; d = dy - dx; y = t->y[i]; dx += dx; 
 	for(x=x0; x<=x1; ++x) {
 		plot(t, x, y);
 		if(d>0) {
@@ -436,10 +437,10 @@ static inline void plotLineLow(tri *t, int x0, int y0, int x1, int y1) {
 	}
 }
 
-static inline void plotLineHigh(tri *t, int x0, int y0, int x1, int y1) {
-	int dx = x1 - x0, dy = y1 - y0, xi = 1, d, x, y;
+static _REG inline void plotLineHigh(_A0(tri *t), _D0(int i), _D1(int j)) {
+	int dx = t->x[j] - t->x[i], y0, y1, dy = (y1=t->y[j]) - (y0=t->y[i]), xi = 1, d, x, y;
 	if(dx<0) {dx = -dx; xi = -1;}
-	dx += dx; d = dx - dy; x = x0; dy += dy; 
+	dx += dx; d = dx - dy; x = t->x[i]; dy += dy; 
 	for(y=y0; y<=y1; ++y) {
 		plot(t, x, y);
 		if(d>0) {
@@ -450,19 +451,19 @@ static inline void plotLineHigh(tri *t, int x0, int y0, int x1, int y1) {
 	}
 }
 
-static void plotLine(tri *t, int x0, int y0, int x1, int y1) {
-	int dx = x1 - x0, dy = y1 - y0;
+static _REG void plotLine(_A0(tri *t), _D0(int i), _D1(int j)) {
+	int dx = t->x[j] - t->x[i], dx2=dx, dy = t->y[j] - t->y[i], dy2=dy;
 	if(dx<0) dx = -dx; if(dy<0) dy = -dy;
 	if(dy<dx) {
-		if(x0>x1) 	plotLineLow(t, x1, y1, x0, y0);
-		else		plotLineLow(t, x0, y0, x1, y1);
+		if(dx2<0) 	plotLineLow(t, j, i);
+		else		plotLineLow(t, i, j);
 	} else {
-		if(y0>y1) 	plotLineHigh(t, x1, y1, x0, y0);
-		else		plotLineHigh(t, x0, y0, x1, y1);		
+		if(dy2<0) 	plotLineHigh(t, j, i);
+		else		plotLineHigh(t, i, j);		
 	}
 }
 
-static int wu_plot(tri *t, int x, int y, double col) {
+static inline void wu_plot(tri *t, int x, int y, double col) {
 	if((unsigned)y < (unsigned)t->height && 
 	   (unsigned)x < (unsigned)t->width) {
 		int c = col*255, *p = (void*)&t->pbuf[(t->height-1 - y)*t->width + x];
@@ -471,16 +472,17 @@ static int wu_plot(tri *t, int x, int y, double col) {
 	}
 }
 
-static double fpart(double x) {
+static inline _REG float fpart(_FP0(double x)) {
 	return x-(int)x;
 }
 
-static void drawLine(tri *t, int x0, int y0, int x1, int y1) {
+static _REG void drawLine(_A0(tri *t), _D0(int i0), _D1(int i1)) {
+	int x0 = t->x[i0], y0=t->y[i0], x1=t->x[i1], y1=t->y[i1];
 	int dx = x1 - x0;
     int dy = y1 - y0;
 	double gradient, intery;
 	int steep, i;
-
+	
 	if(dx<0) dx = -dx;
 	if(dy<0) dy = -dy;
 	
@@ -509,15 +511,21 @@ static void drawLine(tri *t, int x0, int y0, int x1, int y1) {
         	double f = intery-y;
 			wu_plot(t, i,   y, 1-f);
 			wu_plot(t, i, 1+y,   f);
-			intery += gradient;		
+			intery += gradient;
 		}	
 	}
 }
 
 _REG void plotTriangle(_A0(tri *t))  {
-	plotLine(t, t->x[0], t->y[0], t->x[1], t->y[1]);
-	plotLine(t, t->x[0], t->y[0], t->x[2], t->y[2]);
-	plotLine(t, t->x[2], t->y[2], t->x[1], t->y[1]);
+#if 1
+	plotLine(t, 0, 1);
+	plotLine(t, 1, 2);
+	plotLine(t, 2, 0);
+#else
+	drawLine(t, 0, 1);
+	drawLine(t, 1, 2);
+	drawLine(t, 2, 0);
+#endif
 }
 
 void wireframe(model* m, buffer* pbuf, scalar* zbuf) {

@@ -1,0 +1,3 @@
+echo "BENCHMARKING...*N"
+list monkey.#? LFORMAT="%s -benchmark*necho *"**n*"" TO T:monkey.bench
+execute T:monkey.bench
