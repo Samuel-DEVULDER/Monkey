@@ -48,6 +48,8 @@ typedef struct {
 	int bounds_size;
 } tri;
 
+extern unsigned char flat,wire;	
+
 static _REG int projection(_A0(tri *t), _A1(const triangle* modelTri)) {
 	int i, width = t->width, height = t->height;
 	
@@ -104,8 +106,27 @@ static _REG void color(_A0(tri *t), _A1(const triangle* modelTri)) {
 	t->col = modelTri->vertices[0]->col;
 	t->monochrome = t->col==modelTri->vertices[1]->col && 
 				    t->col==modelTri->vertices[2]->col;
-
+	
 	// if not prepare colors
+	if(!t->monochrome && flat) {
+		scalar z=255/3.0f;
+		int c;
+		c = z*(modelTri->vertices[0]->color.x + 
+		       modelTri->vertices[1]->color.x + 
+			   modelTri->vertices[2]->color.x);
+		c<<=8;
+		c+= z*(modelTri->vertices[0]->color.y + 
+		       modelTri->vertices[1]->color.y + 
+			   modelTri->vertices[2]->color.y);
+		
+		c<<=8;
+		c+= z*(modelTri->vertices[0]->color.z + 
+		       modelTri->vertices[1]->color.z + 
+			   modelTri->vertices[2]->color.z);
+		t->col = c;
+		t->monochrome = 1;
+		return;
+	}
 	if(!t->monochrome) {
 		t->r[0] = modelTri->vertices[0]->color.x*0xFF0000;
 		t->r[1] = modelTri->vertices[1]->color.x*0xFF0000;
@@ -164,7 +185,7 @@ int _REG prepare(_A0(tri *t), _A1(const triangle* modelTri)) {
 	return 1;
 }
 
-static _REG void plot(_A0(tri *t), _D0(int y), _FP0(double x)) {
+static _REG void plot_x(_A0(tri *t), _D0(int y), _FP0(double x)) {
 	if((unsigned)y < (unsigned)t->height) {
 		struct bounds *p = &t->bounds[y];
 		if(x<p->min) p->min = x;
@@ -186,8 +207,8 @@ static _REG void plot_line_x(_A0(tri *t), _D0(int i), _D1(int j)) {
 	
 	// horiz line
 	if(k == 0) {
-		plot(t, y, t->x[i]);
-		plot(t, y, t->x[j]);
+		plot_x(t, y, t->x[i]);
+		plot_x(t, y, t->x[j]);
 		return;
 	}
 
@@ -195,10 +216,10 @@ static _REG void plot_line_x(_A0(tri *t), _D0(int i), _D1(int j)) {
 	
 	if(k<0) {k=-k; dx=-dx; dy=-dy;}
 	do {
-		plot(t,y,x);
+		plot_x(t,y,x);
 		x += dx; y += dy;
 	} while(--k);
-	plot(t,y,x);
+	plot_x(t,y,x);
 }
 
 #if M68K==0
@@ -368,6 +389,13 @@ void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 	t.height = pbuf->size;
 	t.pbuf   = pbuf->data;
 	t.zbuf   = zbuf;
+	
+	// reset z-buffer
+	do {
+		int i = t.width*t.height; 
+		scalar *f = zbuf;
+		while(1 + --i) *f++ = FLT_MIN;
+	} while(0);
 
 	// The actual rasterizer
 	while(modelTrianglesLeft(m)) {
@@ -384,5 +412,126 @@ void rasterize(model* m, buffer* pbuf, scalar* zbuf) {
 	
 		if(prepare(&t, modelTri))
 			draw_triangle(&t);
+	}
+}
+
+static inline _REG void plot(_A0(tri *t), _D0(int x), _D1(int y)) {
+	if((unsigned)y < (unsigned)t->height && 
+	   (unsigned)x < (unsigned)t->width) {
+		t->pbuf[(t->height-1 - y)*t->width + x] = -1;
+	}
+}
+
+static inline void plotLineLow(tri *t, int x0, int y0, int x1, int y1) {
+	int dx = x1 - x0, dy = y1 - y0, yi = 1, d, x, y;
+	if(dy<0) {dy = -dy; yi = -1;}
+	dy += dy; d = dy - dx; y = y0; dx += dx; 
+	for(x=x0; x<=x1; ++x) {
+		plot(t, x, y);
+		if(d>0) {
+			y += yi;
+			d -= dx;
+		}
+		d += dy;
+	}
+}
+
+static inline void plotLineHigh(tri *t, int x0, int y0, int x1, int y1) {
+	int dx = x1 - x0, dy = y1 - y0, xi = 1, d, x, y;
+	if(dx<0) {dx = -dx; xi = -1;}
+	dx += dx; d = dx - dy; x = x0; dy += dy; 
+	for(y=y0; y<=y1; ++y) {
+		plot(t, x, y);
+		if(d>0) {
+			x += xi;
+			d -= dy;
+		}
+		d += dx;
+	}
+}
+
+static void plotLine(tri *t, int x0, int y0, int x1, int y1) {
+	int dx = x1 - x0, dy = y1 - y0;
+	if(dx<0) dx = -dx; if(dy<0) dy = -dy;
+	if(dy<dx) {
+		if(x0>x1) 	plotLineLow(t, x1, y1, x0, y0);
+		else		plotLineLow(t, x0, y0, x1, y1);
+	} else {
+		if(y0>y1) 	plotLineHigh(t, x1, y1, x0, y0);
+		else		plotLineHigh(t, x0, y0, x1, y1);		
+	}
+}
+
+static int wu_plot(tri *t, int x, int y, double col) {
+	if((unsigned)y < (unsigned)t->height && 
+	   (unsigned)x < (unsigned)t->width) {
+		int c = col*255, *p = (void*)&t->pbuf[(t->height-1 - y)*t->width + x];
+		c *= 0x10101;
+		if(c>*p) *p = c;
+	}
+}
+
+static double fpart(double x) {
+	return x-(int)x;
+}
+
+static void drawLine(tri *t, int x0, int y0, int x1, int y1) {
+	int dx = x1 - x0;
+    int dy = y1 - y0;
+	double gradient, intery;
+	int steep, i;
+
+	if(dx<0) dx = -dx;
+	if(dy<0) dy = -dy;
+	
+	steep = dy>dx;
+    if(steep) {x0^=y0; x1^=y1; y0^=x0; y1^=x1; x0^=y0; x1^=y1;}
+	if(x0>x1) {x0^=x1; y0^=y1; x1^=x0; y1^=y0; x0^=x1; y0^=y1;}
+    
+	dx = x1 - x0;
+	dy = y1 - y0;
+	gradient = dx==0?1:((double)dy)/dx;
+	
+	intery = y0;
+	
+    // main loop
+	if(steep) {
+		for(i=x0; i<=x1; ++i) {
+			int x = intery;
+        	double f = intery-x;
+			wu_plot(t, x,   i, 1-f);
+			wu_plot(t, x+1, i,   f);
+			intery += gradient;
+		}
+	} else {
+		for(i=x0; i<=x1; ++i) {
+			int y = intery;
+        	double f = intery-y;
+			wu_plot(t, i,   y, 1-f);
+			wu_plot(t, i, 1+y,   f);
+			intery += gradient;		
+		}	
+	}
+}
+
+_REG void plotTriangle(_A0(tri *t))  {
+	plotLine(t, t->x[0], t->y[0], t->x[1], t->y[1]);
+	plotLine(t, t->x[0], t->y[0], t->x[2], t->y[2]);
+	plotLine(t, t->x[2], t->y[2], t->x[1], t->y[1]);
+}
+
+void wireframe(model* m, buffer* pbuf, scalar* zbuf) {
+	static tri t;
+	
+	// local copy for faster access
+	t.width  = pbuf->width;
+	t.height = pbuf->size;
+	t.pbuf   = pbuf->data;
+	t.zbuf   = zbuf;
+
+	// The actual rasterizer
+	while(modelTrianglesLeft(m)) {
+		const triangle *modelTri = modelNextTriangle(m);
+		if(projection(&t, modelTri)) plotTriangle(&t);
 	}
 }

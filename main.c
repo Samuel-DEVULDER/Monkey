@@ -100,7 +100,7 @@ static struct RastPort   CybRasPort;
 #endif
 static ULONG width = WIDTH, height = HEIGHT;
 static LONG DispID = INVALID_ID;
-BYTE mc68080, waitTOF, directdraw, win, benchmark;
+BYTE mc68080, waitTOF, directdraw, win, benchmark, flat, wire;
 
 #define TIMINGS 20
 double timings[TIMINGS];
@@ -148,6 +148,8 @@ static void usage(char *progname) {
 	fprintf(stdout,"-id 0x<Mode>   : makes the demo run on a screen matching the provided\n");
 	fprintf(stdout,"		mode-id.\n");
 	fprintf(stdout,"-size <w> <h>  : uses a <w>x<h> screen or window.\n");
+	fprintf(stdout,"-flat          : use flat surfaces (no Gouraud shading).\n");
+	fprintf(stdout,"-wire          : display wire-frame.\n");
 	fprintf(stdout,"-directdraw    : directly render on-screen. This increases the FPS a lot,\n");
 	fprintf(stdout,"		but can provide bad colours if your screen is in PC\n");
 	fprintf(stdout,"		pixel-format, or unfinished drawings.\n");
@@ -178,6 +180,10 @@ static void parseCLI(int ac, char **av) {
 			waitTOF = -1;
 		} else if(!strcmp("-win", av[i])) {
 			win = -1;
+		} else if(!strcmp("-flat", av[i])) {
+			flat = -1;
+		} else if(!strcmp("-wire", av[i])) {
+			wire = -1;
 		} else if(!strcmp("-size", av[i]) && i+2<ac) {
 			int w = atoi(av[++i]);
 			int h = atoi(av[++i]);
@@ -281,13 +287,6 @@ void display(void) {
 	_b1 += .0017*4; _b2 += .002*4;
 	_c1 += .0013*4; _c2 += .003*4;
 	
-	// Initialize z buffer
-	do {
-		int i = frameBuffer.width*frameBuffer.size; 
-		scalar *f = zbuf;
-		while(1 + --i) *f++ = FLT_MIN;
-	} while(0);
-
 	matrixTranslate(&transMatrix, 0, 0, zDist);
 	matrixRotY(&tmp2, rotAngle);
 	matrixRotX(&tmp1, angleX);
@@ -300,16 +299,21 @@ void display(void) {
 
 	applyTransforms(&globalModel, &mvMatrixO, &pMatrixO);
 	
-	shade(&globalModel, 5*ca1*sa2, 5*sa1*sa2, 5*ca1+0*ca2, 0);
-	shade(&globalModel, 5*cb1*sb2, 5*sb1*sb2, 5*cb1+0*cb2, 1);
-	shade(&globalModel, 5*cc1*sc2, 5*sc1*sc2, 5*cc1+0*cc2, 2);
+	clear(&frameBuffer);
+	if(wire)
+		wireframe(&globalModel, &frameBuffer, zbuf);
+	else {
+		shade(&globalModel, 5*ca1*sa2, 5*sa1*sa2, 5*ca1+0*ca2, 0);
+		shade(&globalModel, 5*cb1*sb2, 5*sb1*sb2, 5*cb1+0*cb2, 1);
+		shade(&globalModel, 5*cc1*sc2, 5*sc1*sc2, 5*cc1+0*cc2, 2);
 	
 	// shade(&globalModel, -5, 5, 0, 0);
 	// shade(&globalModel, -5, 5, 0, 1);
 	// shade(&globalModel, -5, 5, 0, 2);
 
-	clear(&frameBuffer);
-	rasterize(&globalModel, &frameBuffer, zbuf);
+	// Initialize z buffer
+		rasterize(&globalModel, &frameBuffer, zbuf);
+	}
 
 	rotAngle -= 0.02;	
 }

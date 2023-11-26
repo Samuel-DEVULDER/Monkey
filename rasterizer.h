@@ -13,5 +13,6 @@
 #include "models.h"
 
 void rasterize(model* m, buffer* pbuf, scalar* zbuf);
+void wireframe(model* m, buffer* pbuf, scalar* zbuf);
 
 #endif

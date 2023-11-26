@@ -841,7 +841,7 @@ _draw_span
 		bge.b	.0
 		rts
 .0
-		movem.l	d2-d7,-(sp)
+		movem.l	d2-d5,-(sp)
 		fmovem	fp2-fp7,-(sp)
 		
 		fmove.s	TRI_dx+0*4(a0),fp0
@@ -898,13 +898,12 @@ _draw_span
 		fcmp.s	(a1)+,fp2
 		fble.b	.2
 		
-		fmove.l	fp3,d0
-		fmove.l	fp4,d6
-		fmove.l	fp5,d7
+		fmove.l	fp4,d0
+		fmove.l	fp3,(a0)
+		move.w	d0,2(a0)
+		fmove.l	fp5,d0
 		fmove.s	fp2,-4(a1)
-		move.w	d6,d0
-		move.b	d7,d0
-		move.l	d0,(a0)
+		move.b	d0,3(a0)
 .2
 		addq.l	#4,a0
 		fadd.s	d2,fp2
@@ -915,7 +914,7 @@ _draw_span
 		dbra	d1,.1
 		
 		fmovem	(sp)+,fp2-fp7
-		movem.l	(sp)+,d2-d7
+		movem.l	(sp)+,d2-d5
 		rts
 		
 		xdef _draw_triangle
