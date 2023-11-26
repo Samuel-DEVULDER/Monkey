@@ -67,6 +67,7 @@ OBJECTS=\
 	rasterizer.o \
 	main.o \
 	aa_tree.o \
+	redrat.o \
 	optim.o 
 	
 all: $(OUTPUT)

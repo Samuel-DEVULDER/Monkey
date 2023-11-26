@@ -106,6 +106,7 @@ BYTE mc68080, waitTOF, directdraw, win, benchmark;
 double timings[TIMINGS];
 
 #include "rasterizer.h"
+#include "redrat.h"
 
 buffer frameBuffer;
 model globalModel;
@@ -262,30 +263,6 @@ double eclock(void)  {
 
 double angleX = 0;
 
-static _REG double z(_FP0(double x), _FP1(double y)) {
-	double d2 = x*x+y*y;
-	return sin(6*M_PI*sqrt(d2)+rotAngle)*exp(-d2)*.1;
-}
-
-static _REG double dz_dx(_FP0(double x), _FP1(double y)) {
-	return (z(x+1/10240.0,y)-z(x,y))*10240.0;
-}
-
-static _REG double dz_dy(_FP0(double x), _FP1(double y)) {
-	return (z(x,y+1/10240.0)-z(x,y))*10240.0;
-}
-
-static void apply_z(model *model) {
-	vertex *v;
-	for(v=model->vertices; v; v=v->next) {
-		v->point.y = z(v->point.x, v->point.z);
-		
-		v->normal.x = -dz_dy(v->point.x, v->point.z);
-		v->normal.z = -dz_dx(v->point.x, v->point.z);
-		v->normal.y = 1;
-	}
-}
-
 void display(void) {
 	matrix transMatrix, mvMatrixO, rotMatrixA; 
 	matrix tmp1, tmp2;
@@ -317,18 +294,19 @@ void display(void) {
 	matrixMult(&rotMatrixA, &tmp1, &tmp2);
 	matrixMult(&mvMatrixO, &transMatrix, &rotMatrixA);
 
-	if(modelName==redrat) apply_z(&globalModel);
+	if(modelName==redrat) animRedrat(&globalModel);
 
 	matrixPerspective(&pMatrixO, 45, 4.0/3.0, 1.0, 32.0 );
 
 	applyTransforms(&globalModel, &mvMatrixO, &pMatrixO);
+	
 	shade(&globalModel, 5*ca1*sa2, 5*sa1*sa2, 5*ca1+0*ca2, 0);
 	shade(&globalModel, 5*cb1*sb2, 5*sb1*sb2, 5*cb1+0*cb2, 1);
 	shade(&globalModel, 5*cc1*sc2, 5*sc1*sc2, 5*cc1+0*cc2, 2);
-	//shade(&globalModel, 5, 5, 5, 0);
-	//shade(&globalModel, 5, 5, 5, 1);
-	//shade(&globalModel, 5, 5, 5, 2);
 	
+	// shade(&globalModel, -5, 5, 0, 0);
+	// shade(&globalModel, -5, 5, 0, 1);
+	// shade(&globalModel, -5, 5, 0, 2);
 
 	clear(&frameBuffer);
 	rasterize(&globalModel, &frameBuffer, zbuf);
@@ -465,52 +443,6 @@ legacy2:
 					0xc0);   
 }
 
-static  void makeSquareMesh(model *newModel, int w, int h) {
-	scalar _w = scalarDiv(1.0,w-1), _h = scalarDiv(1.0,h-1);
-	triangle *t;
-	int i=w*h-1,j;
-	
-	vertex *vtx = alloc(sizeof(vertex)*w*h);
-	newModel->vertices = &vtx[0];
-	for(j=0;j<i;++j) {
-		vtx[j].next = &vtx[j+1];
-	}
-	vtx[i].next = NULL;
-	
-#define pt(x,y) vtx[(x)+(y)*w]
-	for(i=0; i<w; ++i) {
-		for(j=0; j<h; ++j) {
-			vertex *p = &pt(i,j);
-			
-			p->point.x = (i*_w - 0.5)*2;
-			p->point.z = (j*_h - 0.5)*2;
-			p->point.y = 0;
-			
-			p->normal.x = 0;
-			p->normal.z = 0;
-			p->normal.y = 1;
-		}
-	}
-		
-	newModel->triangleCount = (w-1)*(h-1)*2;
-	newModel->curTriangle = 0;
-	newModel->triangles = t = alloc(sizeof(triangle)*newModel->triangleCount);
-	for(i=1; i<w; ++i) {
-		for(j=1; j<h; ++j) {
-			t->ID = t - newModel->triangles;
-			t->vertices[0] = &pt(i-1,j-1);
-			t->vertices[1] = &pt(i,j);
-			t->vertices[2] = &pt(i,j-1);
-			++t;
-			t->ID = t - newModel->triangles;
-			t->vertices[0] = &pt(i,j);
-			t->vertices[1] = &pt(i-1,j-1);
-			t->vertices[2] = &pt(i-1,j);
-			++t;
-		}
-	}
-}
-
 int main(int argc, char **argv) {
 	LONG penBLACK, penWHITE;
 	int XOff=0,YOff=0, first, num_frames=0;
@@ -523,7 +455,8 @@ int main(int argc, char **argv) {
 	
 	if(!strcmp(redrat, modelName)) {
 		modelName = redrat;
-		makeSquareMesh(&globalModel,51,51);
+		//makeSquareMesh(&globalModel,51,51);
+		makeRedratMesh(&globalModel, 32, 20);
 		zDist = 4;
 		angleX = M_PI/6;
 	} else if(!makeModelFromMeshFile(&globalModel, modelName)) {

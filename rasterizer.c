@@ -744,10 +744,13 @@ void _REG draw_triangle_5(_A0(tri *t), _A1(triangle *modelTri)) {
 		t->d_b = t->blu[0]*t->dx[0] + t->blu[1]*t->dx[1] + t->blu[2]*t->dx[2];
 	}
 
+	// plotTriangle(t); return;
+	
 	if(t->ymax - t->ymin<=4) {
 		int i = t->ymin;
 		while(i<=t->ymax) t->extra.xmin[i++] = t->xmin;
 	} else plotTriangle(t);
+	
 	
 	idx   = (unsigned short)(t->extra.height-1 - y) * t->extra.width;
 	zb_   = &t->extra.zbuf[idx];

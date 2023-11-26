@@ -28,6 +28,12 @@ typedef struct vertex {
 } vertex;
 
 typedef struct {
+	vertex vertex;
+	scalar u, v;
+	int flags;
+} param_vertex;
+
+typedef struct {
 	int ID;
 	const vertex* vertices[3];
 } triangle;

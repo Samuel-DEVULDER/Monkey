@@ -143,8 +143,8 @@ _REG scalar dot3(_A0(vec3 *a), _A1(vec3 *b)) {
 
 _REG void cross(_D0(vec3 *r), _A0(vec3 *a), _A1(vec3 *b)) {
 	r->x = a->y * b->z - a->z * b->y;
-	r->y = a->z * b->x - a->x * a->z;
-	r->z = a->x * b->y - a->y * a->x;
+	r->y = a->x * b->z - a->z * b->x;
+	r->z = a->x * b->y - a->y * b->x;
 }
 
 // Vector sizes
